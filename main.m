@@ -1,1 +1,377 @@
-LyoKICogQ3JhbmVCYWRnZUZpeCB2MC40CiAqID09PT09PT09PT09PT09PT09PT0KICog5L+u5aSNIENyYW5lIDEuMy4xNyDlpJrlvIDlupTnlKjvvIjlvq7kv6HnrYnvvInjgIzmtojmga/lt7Lor7vlkI7vvIzlv6vmjbfoj5zljZXvvIhIYXB0aWMgVG91Y2jvvIkKICog5LuN5q6L55WZIHBlci1jb250YWluZXIg5pyq6K+75pWw44CN77yM5bm25LiU6K6p5riF6Zu257uT5p6c5oyB5LmF5YyW77yI6YeN5ZCvIFNwcmluZ0JvYXJkIOWQjgogKiDop5LmoIfkuI3lho3lpI3mtLvvvInjgIIKICoKICog4pSA4pSAIOagueWboO+8iENyYW5lU0IuZHlsaWIgMS4zLjE3IOWPjeaxh+e8luehruiupO+8ieKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogKiAgIC0g5Zu+5qCH6KeS5qCHICAgPSBfYmFkZ2VDb3VudFN0b3JlR2V0QXBwQ291bnQoYXBwSUQsIDEp77ya6YGN5Y6G5a655Zmo5rGC5ZKM44CCCiAqICAgLSDlv6vmjbfoj5zljZUgICA9IF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudChhcHBJRCwgY2lkLCAxKe+8mgogKiAgICAgICAgICAgICAgICAgIOavj+S4quWuueWZqOWNleeLrOaYvuekuu+8iOiwg+eUqOeCuSBfY3JhbmVfcmVwbGFjZW1lbnRNZW51IEAweGY3OTjvvInjgIIKICogICAtIOW+ruS/oea4heinkuagh+i1sCAtc2V0QmFkZ2VOdW1iZXI6Zm9yQnVuZGxlSWRlbnRpZmllcjp3aXRoQ29tcGxldGlvbkhhbmRsZXI677yMCiAqICAgICDooqsgQ3JhbmUg55qEIF9wcml2U2V0QmFkZ2VOdW1iZXJIb29rKEAweDdjNWMpIOaLpuaIquOAguWug+aLv+S4jeWIsCBjb250YWluZXJJRAogKiAgICAg5pe277yIMHg3Y2MwIGNieiAvIDB4N2QxNCBjYnogeDIz77yJ5Lya6LWw44CM55u05o6l6YCP5Lyg44CN5YiG5pSvKDB4N2RiMCnvvJoKICogICAgIOezu+e7n+inkuagh+iiq+e9riAw77yI5Zu+5qCH6KeS5qCH5Zug5q2k5raI5aSx77yJ77yM5L2GIENyYW5lIOeahCBwZXItY29udGFpbmVyIOe8k+WtmAogKiAgICAg5LiOIEJhZGdlU3RvcmUucGxpc3Qg5a6M5YWo5rKh5YqoIOKGkiDlv6vmjbfoj5zljZXnu6fnu63mmL7npLrljoblj7LlgLzjgIIKICoKICog4pSA4pSAIHYwLjMg5Li65LuA5LmI5a6M5YWo5peg5pWI77yI5pys5qyh5a6e5rWL5a6a5L2N77yJ4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAqICAgQ3JhbmVTQiDnmoQgTENfRFlMRF9FWFBPUlRTX1RSSUUg6YeMICoq5LiN5YyF5ZCrKiogYmFkZ2Ug55u45YWz56ym5Y+377yaCiAqICAgICBfcHJpdlNldEJhZGdlTnVtYmVySG9vayAvIF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudCAvCiAqICAgICBfYmFkZ2VDb3VudFN0b3JlU2V0Q29udGFpbmVyQ291bnQgLyBfc2V0RXhpc3RpbmdCYWRnZUNvdW50Rm9yQXBwbGljYXRpb24KICogICDlroPku6zomb3lnKggc3ltdGFi77yITl9TRUNUfE5fRVhU77yJ5L2G5pyq5a+85Ye6IOKGkiBkbHN5bSgpIOWFqOmDqOi/lOWbniBOVUxM77yMCiAqICAg5LiJ5LiqIGhvb2sg5LiA5Liq6YO95rKh5oyC5LiK44CC5omA5LulIHYwLjMg6KOF5LiK562J5LqO5rKh6KOF44CCCiAqCiAqIOKUgOKUgCB2MC40IOWumuS9jeaWueahiCDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICogICBDcmFuZVNCIOS4pOS4quWIhueJh+eahCBfX1RFWFQgdm1hZGRyIOWdh+S4uiAw77yMc3ltdGFiIOeahCBuX3ZhbHVlIOWNsyB2bWFkZHLvvIwKICogICDmlYUg6L+Q6KGM5pe25Zyw5Z2AID0gc2xpZGUgKyB2bWFkZHLjgIIKICogICAgIHNsaWRlICAg4oaQIF9keWxkX2dldF9pbWFnZV92bWFkZHJfc2xpZGUoaW5kZXgpCiAqICAgICDliIbniYcgICAg4oaQIG1oLT5jcHVzdWJ0eXBlID09IDB4ODAwMDAwMDIg4oaSIGFybTY0Ze+8mz09IDAg4oaSIGFybTY0CiAqICAg5YWI5oyJ5Zyw5Z2A5LiL6ZKp77yMZGxzeW0g5LuF5L2c5Li6IGZhbGxiYWNr44CCCiAqCiAqIOKUgOKUgCDmjIHkuYXljJYg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAqICAgdjAuMyDnmoQgcG9zdGluc3Qg5Yig5LqGIEJhZGdlU3RvcmUucGxpc3TvvIzkvYbmsqHph43lkK8gU3ByaW5nQm9hcmTvvIxDcmFuZSDlnKgKICogICDpgIDlh7rml7bmiorlhoXlrZjph4znmoTml6forqHmlbDlj4jlhpnlm54gcGxpc3Qg4oaSIOeUqOaIt+eci+WIsOOAjOmHjeWQr+WQjuinkuagh+WPiOWbnuadpeOAjeOAggogKiAgIHYwLjQg5pS55Li677ya5ZCv5Yqo5ZCOIDEyIOenkuOAjOa4hembtuaooeW8j+OAjeaKiiBDcmFuZSDku44gcGxpc3Qg5oGi5aSN55qE5a2Y6YeP6K6h5pWwCiAqICAg5Y6L5oiQIDDvvIjnu48gb3JpZyDlm57lhpnvvIxwbGlzdCDpmo/kuYvlj5jlubLlh4DvvInvvIzlkIzml7blkK/liqjml7bnm7TmjqXpgJLlvZLmuIXpm7YKICogICBCYWRnZVN0b3JlLnBsaXN0IOmHjOeahOaJgOacieaVsOWtl+OAgnBvc3RpbnN0IOS4jeWGjSBraWxsYWxsIFNwcmluZ0JvYXJk77yMCiAqICAg6KOF5a6M6KGl5LiB6ZyA55So5oi35omL5Yqo6YeN5ZCv5LiA5qyhIFNwcmluZ0JvYXJk77yI5oiW5YWz5py66YeN5ZCv77yJ5omN55Sf5pWI44CCCiAqCiAqIOe8luivke+8mi5naXRodWIvd29ya2Zsb3dzL2J1aWxkLnltbCDnm7TnvJbvvIznuq8gYXJtNjRl44CCCiAqLwoKI2ltcG9ydCA8Rm91bmRhdGlvbi9Gb3VuZGF0aW9uLmg+CiNpbXBvcnQgPG9iamMvcnVudGltZS5oPgojaW1wb3J0IDxkbGZjbi5oPgojaW1wb3J0IDxtYWNoLW8vZHlsZC5oPgojaW1wb3J0IDxtYWNoLW8vbG9hZGVyLmg+CiNpbXBvcnQgPHB0aHJlYWQuaD4KI2ltcG9ydCA8c3RyaW5nLmg+CgojcHJhZ21hIG1hcmsgLSBzdWJzdHJhdGUKCnR5cGVkZWYgdm9pZCAoKk1TSG9va0Z1bmN0aW9uX3QpKHZvaWQgKnN5bWJvbCwgdm9pZCAqaG9vaywgdm9pZCAqKm9sZCk7CnN0YXRpYyBNU0hvb2tGdW5jdGlvbl90IHBNU0hvb2tGdW5jdGlvbiA9IE5VTEw7CgpzdGF0aWMgdm9pZCByZXNvbHZlX3N1YnN0cmF0ZSh2b2lkKSB7CiAgICB2b2lkICpoID0gZGxvcGVuKCIvdXNyL2xpYi9saWJzdWJzdHJhdGUuZHlsaWIiLCBSVExEX05PVyk7CiAgICBpZiAoIWgpIGggPSBkbG9wZW4oIi91c3IvbGliL2VsbGVraXQuZHlsaWIiLCBSVExEX05PVyk7CiAgICBpZiAoIWgpIGggPSBkbG9wZW4oIi91c3IvbGliL3N1YnN0cmF0ZS5keWxpYiIsIFJUTERfTk9XKTsKICAgIGlmIChoKSBwTVNIb29rRnVuY3Rpb24gPSAoTVNIb29rRnVuY3Rpb25fdClkbHN5bShoLCAiTVNIb29rRnVuY3Rpb24iKTsKICAgIGlmICghcE1TSG9va0Z1bmN0aW9uKSBwTVNIb29rRnVuY3Rpb24gPSAoTVNIb29rRnVuY3Rpb25fdClkbHN5bShoID8gaCA6IFJUTERfREVGQVVMVCwgIk1TSG9va0Z1bmN0aW9uIik7CiAgICBpZiAoIXBNU0hvb2tGdW5jdGlvbikgcE1TSG9va0Z1bmN0aW9uID0gKE1TSG9va0Z1bmN0aW9uX3QpZGxzeW0oUlRMRF9ERUZBVUxULCAiTVNIb29rRnVuY3Rpb24iKTsKfQoKI3ByYWdtYSBtYXJrIC0g5a6a5L2NIENyYW5lU0LvvJpzbGlkZSArIGNwdXN1YnR5cGUKCnN0YXRpYyB1aW50cHRyX3QgZ19zbGlkZSA9IDA7CnN0YXRpYyBCT09MICAgICAgZ19hcm02NGUgPSBOTzsKc3RhdGljIGNvbnN0IGNoYXIgKmdfY3JhbmVQYXRoID0gTlVMTDsKCnR5cGVkZWYgc3RydWN0IHsKICAgIHVpbnRwdHJfdCBnZXRDbnQ7ICAgICAgIC8vIF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudAogICAgdWludHB0cl90IHNldENudDsgICAgICAgLy8gX2JhZGdlQ291bnRTdG9yZVNldENvbnRhaW5lckNvdW50CiAgICB1aW50cHRyX3QgZ2V0QXBwOyAgICAgICAvLyBfYmFkZ2VDb3VudFN0b3JlR2V0QXBwQ291bnQKICAgIHVpbnRwdHJfdCBzZXRFeGlzdGluZzsgIC8vIF9zZXRFeGlzdGluZ0JhZGdlQ291bnRGb3JBcHBsaWNhdGlvbgogICAgdWludHB0cl90IHByaXZTZXQ7ICAgICAgLy8gX3ByaXZTZXRCYWRnZU51bWJlckhvb2sKfSBjcmFuZV9vZmZzX3Q7CgovLyAxLjMuMTcgc3ltdGFiIOWunua1i+WBj+enuwpzdGF0aWMgY29uc3QgY3JhbmVfb2Zmc190IGtPZmZBcm02NGUgPSB7IDB4NmFjYywgMHg2ZjU0LCAweDZjNGMsIDB4NjlmOCwgMHg3YzVjIH07CnN0YXRpYyBjb25zdCBjcmFuZV9vZmZzX3Qga09mZkFybTY0ICA9IHsgMHg2NzM0LCAweDZiMzQsIDB4Njg5YywgMHg2NTkwLCAweDc3NzQgfTsKCnN0YXRpYyBjb25zdCBjcmFuZV9vZmZzX3QgKmN1cl9vZmZzKHZvaWQpIHsgcmV0dXJuIGdfYXJtNjRlID8gJmtPZmZBcm02NGUgOiAma09mZkFybTY0OyB9CgpzdGF0aWMgQk9PTCBsb2NhdGVfY3JhbmUodm9pZCkgewogICAgdWludDMyX3QgbiA9IF9keWxkX2ltYWdlX2NvdW50KCk7CiAgICBmb3IgKHVpbnQzMl90IGkgPSAwOyBpIDwgbjsgaSsrKSB7CiAgICAgICAgY29uc3QgY2hhciAqbmFtZSA9IF9keWxkX2dldF9pbWFnZV9uYW1lKGkpOwogICAgICAgIGlmICghbmFtZSB8fCAhc3Ryc3RyKG5hbWUsICJDcmFuZVNCIikpIGNvbnRpbnVlOwogICAgICAgIGdfc2xpZGUgPSAodWludHB0cl90KV9keWxkX2dldF9pbWFnZV92bWFkZHJfc2xpZGUoaSk7CiAgICAgICAgY29uc3Qgc3RydWN0IG1hY2hfaGVhZGVyICptaCA9IF9keWxkX2dldF9pbWFnZV9oZWFkZXIoaSk7CiAgICAgICAgaWYgKG1oICYmIG1oLT5tYWdpYyA9PSBNSF9NQUdJQ182NCkgewogICAgICAgICAgICB1aW50MzJfdCBzdWIgPSBtaC0+Y3B1c3VidHlwZSAmIDB4MDBGRkZGRkZ1OwogICAgICAgICAgICBnX2FybTY0ZSA9IChzdWIgPT0gMik7ICAgICAgICAgICAvLyBDUFVfU1VCVFlQRV9BUk02NEUKICAgICAgICB9CiAgICAgICAgZ19jcmFuZVBhdGggPSBuYW1lOwogICAgICAgIHJldHVybiBZRVM7CiAgICB9CiAgICByZXR1cm4gTk87Cn0KCnN0YXRpYyB2b2lkICpjcmFuZV9mbih1aW50cHRyX3Qgb2ZmKSB7CiAgICBpZiAoIWdfc2xpZGUpIHJldHVybiBOVUxMOwogICAgcmV0dXJuICh2b2lkICopKGdfc2xpZGUgKyBvZmYpOwp9CgovLyDlhYjmjIkgc2xpZGUrdm1hZGRyIOS4i+mSqe+8m+iLpSBvcmlnIOS7jeS4uiBOVUxM77yI5Zyw5Z2A5LiN5a+577yJ5YaN6YCA5ZueIGRsc3ltCnN0YXRpYyBCT09MIGhvb2tfb25lKHZvaWQgKipvcmlnLCB1aW50cHRyX3Qgb2ZmLCBjb25zdCBjaGFyICpzeW0sIHZvaWQgKmhvb2spIHsKICAgIHZvaWQgKmJ5QWRkciA9IGNyYW5lX2ZuKG9mZik7CiAgICBpZiAoYnlBZGRyKSB7CiAgICAgICAgbWVtc2V0KG9yaWcsIDAsIHNpemVvZih2b2lkICopKTsKICAgICAgICBwTVNIb29rRnVuY3Rpb24oYnlBZGRyLCBob29rLCBvcmlnKTsKICAgICAgICBpZiAoKm9yaWcpIHsKICAgICAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0gaG9va2VkICUtMzRzIEAlcCAoc2xpZGUrMHglbHgpIiwgc3ltLCBieUFkZHIsICh1bnNpZ25lZCBsb25nKW9mZik7CiAgICAgICAgICAgIHJldHVybiBZRVM7CiAgICAgICAgfQogICAgICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIHNsaWRlKzB4JWx4IOWvuSAlcyDkuIvpkqnlpLHotKXvvIjlnLDlnYDml6DmlYjvvInvvIzpgIDlm54gZGxzeW0iLCAodW5zaWduZWQgbG9uZylvZmYsIHN5bSk7CiAgICB9CiAgICB2b2lkICp2aWFTeW0gPSBkbHN5bShSVExEX0RFRkFVTFQsIHN5bSk7CiAgICBpZiAodmlhU3ltKSB7CiAgICAgICAgbWVtc2V0KG9yaWcsIDAsIHNpemVvZih2b2lkICopKTsKICAgICAgICBwTVNIb29rRnVuY3Rpb24odmlhU3ltLCBob29rLCBvcmlnKTsKICAgICAgICBpZiAoKm9yaWcpIHsKICAgICAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0gaG9va2VkICUtMzRzIEAlcCAoZGxzeW0pIiwgc3ltLCB2aWFTeW0pOwogICAgICAgICAgICByZXR1cm4gWUVTOwogICAgICAgIH0KICAgIH0KICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdICoqKiDnm67moIflh73mlbAgJXMg5peg5rOV5a6a5L2N77yM6KGl5LiB5LiN5a6M5pW0ICoqKiIsIHN5bSk7CiAgICByZXR1cm4gTk87Cn0KCiNwcmFnbWEgbWFyayAtIENyYW5lU0Ig5Ye95pWw562+5ZCN77yIYXJtNjRlIOWPjeaxh+e8luehruiupO+8iQoKdHlwZWRlZiB1bnNpZ25lZCBsb25nIGxvbmcgKCpnZXRDb250YWluZXJDb3VudF90KShpZCBhcHBJRCwgaWQgY29udGFpbmVySUQsIHVuc2lnbmVkIGxvbmcgbG9uZyBmbGFnKTsKdHlwZWRlZiB2b2lkICAgICAgICAgICAgICAoKnNldENvbnRhaW5lckNvdW50X3QpKGlkIGFwcElELCBpZCBjb250YWluZXJJRCwgdW5zaWduZWQgbG9uZyBsb25nIGNvdW50KTsKdHlwZWRlZiB1bnNpZ25lZCBsb25nIGxvbmcgKCpnZXRBcHBDb3VudF90KShpZCBhcHBJRCwgdW5zaWduZWQgbG9uZyBsb25nIGZsYWcpOwp0eXBlZGVmIHZvaWQgICAgICAgICAgICAgICgqc2V0RXhpc3RpbmdCYWRnZV90KShpZCBhcHBJRCwgdW5zaWduZWQgbG9uZyBsb25nIGNvdW50KTsKdHlwZWRlZiB2b2lkICAgICAgICAgICAgICAoKnByaXZTZXRCYWRnZV90KShpZCBzZWxmLCBTRUwgX2NtZCwgaWQgYmFkZ2VOdW1iZXJPYmosIGlkIGJ1bmRsZUlELCBpZCBjb21wbGV0aW9uKTsKCnN0YXRpYyBnZXRDb250YWluZXJDb3VudF90IG9yaWdfR2V0Q29udGFpbmVyQ291bnQgPSBOVUxMOwpzdGF0aWMgc2V0Q29udGFpbmVyQ291bnRfdCBvcmlnX1NldENvbnRhaW5lckNvdW50ID0gTlVMTDsKc3RhdGljIGdldEFwcENvdW50X3QgICAgICAgb3JpZ19HZXRBcHBDb3VudCAgICAgICA9IE5VTEw7CnN0YXRpYyBwcml2U2V0QmFkZ2VfdCAgICAgIG9yaWdfUHJpdlNldEJhZGdlICAgICAgPSBOVUxMOwpzdGF0aWMgc2V0RXhpc3RpbmdCYWRnZV90ICByZWFsX1NldEV4aXN0aW5nQmFkZ2UgID0gTlVMTDsKCiNwcmFnbWEgbWFyayAtIOeKtuaAgQoKc3RhdGljIE5TTXV0YWJsZVNldCAgICAgICAqZ19jbGVhcmVkQXBwcyA9IG5pbDsgICAvLyDop5LmoIflt7Lnoa7orqTmuIXpm7bnmoQgYnVuZGxlIGlkCnN0YXRpYyBOU011dGFibGVEaWN0aW9uYXJ5ICpnX2NvbnRhaW5lcnMgPSBuaWw7ICAgLy8gYXBwSUQgLT4gTlNNdXRhYmxlU2V0KGNvbnRhaW5lcklEKQpzdGF0aWMgcHRocmVhZF9tdXRleF90ICAgICAgZ19sb2NrID0gUFRIUkVBRF9NVVRFWF9JTklUSUFMSVpFUjsKc3RhdGljIHZvbGF0aWxlIEJPT0wgICAgICAgIGdfemVyb01vZGUgPSBOTzsgICAgICAvLyDlkK/liqjmuIXpm7bmqKHlvI8Kc3RhdGljIEJPT0wgICAgICAgICAgICAgICAgIGdfaW5pdGVkID0gTk87CgpzdGF0aWMgQk9PTCBpc19zdHJpbmcoaWQgbykgeyByZXR1cm4gbyAmJiBbbyBpc0tpbmRPZkNsYXNzOltOU1N0cmluZyBjbGFzc11dOyB9CgpzdGF0aWMgdm9pZCBtYXJrX2NsZWFyZWQoaWQgYXBwSUQsIEJPT0wgY2xlYXJlZCkgewogICAgaWYgKCFpc19zdHJpbmcoYXBwSUQpKSByZXR1cm47CiAgICBwdGhyZWFkX211dGV4X2xvY2soJmdfbG9jayk7CiAgICBpZiAoY2xlYXJlZCkgewogICAgICAgIGlmICghW2dfY2xlYXJlZEFwcHMgY29udGFpbnNPYmplY3Q6YXBwSURdKSB7CiAgICAgICAgICAgIFtnX2NsZWFyZWRBcHBzIGFkZE9iamVjdDphcHBJRF07CiAgICAgICAgICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIOW3sua4hembtuagh+iusDogJUAiLCBhcHBJRCk7CiAgICAgICAgfQogICAgfSBlbHNlIHsKICAgICAgICBpZiAoW2dfY2xlYXJlZEFwcHMgY29udGFpbnNPYmplY3Q6YXBwSURdKSB7CiAgICAgICAgICAgIFtnX2NsZWFyZWRBcHBzIHJlbW92ZU9iamVjdDphcHBJRF07CiAgICAgICAgICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIOaSpOmUgOa4hembtuagh+iusDogJUAiLCBhcHBJRCk7CiAgICAgICAgfQogICAgfQogICAgcHRocmVhZF9tdXRleF91bmxvY2soJmdfbG9jayk7Cn0KCnN0YXRpYyBCT09MIGlzX2NsZWFyZWQoaWQgYXBwSUQpIHsKICAgIGlmICghaXNfc3RyaW5nKGFwcElEKSkgcmV0dXJuIE5POwogICAgcHRocmVhZF9tdXRleF9sb2NrKCZnX2xvY2spOwogICAgQk9PTCByID0gW2dfY2xlYXJlZEFwcHMgY29udGFpbnNPYmplY3Q6YXBwSURdOwogICAgcHRocmVhZF9tdXRleF91bmxvY2soJmdfbG9jayk7CiAgICByZXR1cm4gcjsKfQoKc3RhdGljIHZvaWQgcmVtZW1iZXJfY29udGFpbmVyKGlkIGFwcElELCBpZCBjb250YWluZXJJRCkgewogICAgaWYgKCFpc19zdHJpbmcoYXBwSUQpIHx8ICFpc19zdHJpbmcoY29udGFpbmVySUQpKSByZXR1cm47CiAgICBwdGhyZWFkX211dGV4X2xvY2soJmdfbG9jayk7CiAgICBOU011dGFibGVTZXQgKnMgPSBnX2NvbnRhaW5lcnNbYXBwSURdOwogICAgaWYgKCFzKSB7IHMgPSBbTlNNdXRhYmxlU2V0IHNldF07IGdfY29udGFpbmVyc1thcHBJRF0gPSBzOyB9CiAgICBbcyBhZGRPYmplY3Q6Y29udGFpbmVySURdOwogICAgcHRocmVhZF9tdXRleF91bmxvY2soJmdfbG9jayk7Cn0KCnN0YXRpYyB2b2lkIHB1cmdlX2NvbnRhaW5lcnMoaWQgYXBwSUQpIHsKICAgIGlmICghaXNfc3RyaW5nKGFwcElEKSB8fCAhb3JpZ19TZXRDb250YWluZXJDb3VudCkgcmV0dXJuOwogICAgcHRocmVhZF9tdXRleF9sb2NrKCZnX2xvY2spOwogICAgTlNBcnJheSAqY2lkcyA9IFtnX2NvbnRhaW5lcnNbYXBwSURdIGFsbE9iamVjdHNdOwogICAgcHRocmVhZF9tdXRleF91bmxvY2soJmdfbG9jayk7CiAgICBmb3IgKGlkIGNpZCBpbiBjaWRzKSBvcmlnX1NldENvbnRhaW5lckNvdW50KGFwcElELCBjaWQsIDApOwogICAgaWYgKGNpZHMuY291bnQpCiAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0g5riF56m6ICVAIOeahCAlbHUg5Liq5a655Zmo6K6h5pWwIiwgYXBwSUQsICh1bnNpZ25lZCBsb25nKWNpZHMuY291bnQpOwp9CgojcHJhZ21hIG1hcmsgLSBCYWRnZVN0b3JlLnBsaXN0IOWtmOmHj+a4hembtgoKc3RhdGljIGlkIHNjcnViX3ZhbHVlKGlkIHYpIHsKICAgIGlmIChbdiBpc0tpbmRPZkNsYXNzOltOU051bWJlciBjbGFzc11dKSByZXR1cm4gQDA7CiAgICBpZiAoW3YgaXNLaW5kT2ZDbGFzczpbTlNEaWN0aW9uYXJ5IGNsYXNzXV0pIHsKICAgICAgICBOU0RpY3Rpb25hcnkgKnNyYyA9IChOU0RpY3Rpb25hcnkgKil2OwogICAgICAgIE5TTXV0YWJsZURpY3Rpb25hcnkgKm0gPSBbTlNNdXRhYmxlRGljdGlvbmFyeSBkaWN0aW9uYXJ5V2l0aENhcGFjaXR5OnNyYy5jb3VudF07CiAgICAgICAgZm9yIChpZCBrIGluIHNyYykgbVtrXSA9IHNjcnViX3ZhbHVlKHNyY1trXSk7CiAgICAgICAgcmV0dXJuIG07CiAgICB9CiAgICBpZiAoW3YgaXNLaW5kT2ZDbGFzczpbTlNBcnJheSBjbGFzc11dKSB7CiAgICAgICAgTlNBcnJheSAqc3JjID0gKE5TQXJyYXkgKil2OwogICAgICAgIE5TTXV0YWJsZUFycmF5ICphID0gW05TTXV0YWJsZUFycmF5IGFycmF5V2l0aENhcGFjaXR5OnNyYy5jb3VudF07CiAgICAgICAgZm9yIChpZCBlIGluIHNyYykgW2EgYWRkT2JqZWN0OnNjcnViX3ZhbHVlKGUpXTsKICAgICAgICByZXR1cm4gYTsKICAgIH0KICAgIHJldHVybiB2Owp9CgpzdGF0aWMgdm9pZCBzY3J1Yl9wbGlzdCh2b2lkKSB7CiAgICBzdGF0aWMgY29uc3QgY2hhciAqcGF0aHNbXSA9IHsKICAgICAgICAiL3Zhci9qYi92YXIvbW9iaWxlL0xpYnJhcnkvQ3JhbmUvQmFkZ2VTdG9yZS5wbGlzdCIsCiAgICAgICAgIi92YXIvbW9iaWxlL0xpYnJhcnkvQ3JhbmUvQmFkZ2VTdG9yZS5wbGlzdCIKICAgIH07CiAgICBmb3IgKHNpemVfdCBpID0gMDsgaSA8IHNpemVvZihwYXRocykgLyBzaXplb2YocGF0aHNbMF0pOyBpKyspIHsKICAgICAgICBOU1N0cmluZyAqcCA9IFtOU1N0cmluZyBzdHJpbmdXaXRoVVRGOFN0cmluZzpwYXRoc1tpXV07CiAgICAgICAgTlNEaWN0aW9uYXJ5ICpkID0gW05TRGljdGlvbmFyeSBkaWN0aW9uYXJ5V2l0aENvbnRlbnRzT2ZGaWxlOnBdOwogICAgICAgIGlmICghZCkgY29udGludWU7CiAgICAgICAgTlNEaWN0aW9uYXJ5ICpjbGVhbiA9IHNjcnViX3ZhbHVlKGQpOwogICAgICAgIGlmIChbY2xlYW4gd3JpdGVUb0ZpbGU6cCBhdG9taWNhbGx5OllFU10pIHsKICAgICAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0g5bey5riF6Zu2IEJhZGdlU3RvcmUucGxpc3Q6ICVAIiwgcCk7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0g5YaZ5ZueIEJhZGdlU3RvcmUucGxpc3Qg5aSx6LSlOiAlQCIsIHApOwogICAgICAgIH0KICAgIH0KfQoKI3ByYWdtYSBtYXJrIC0g5ZCv5Yqo5riF6Zu25qih5byPCgojZGVmaW5lIFpFUk9fTU9ERV9TRUNPTkRTIDEyCgpzdGF0aWMgdm9pZCBzY2hlZHVsZV96ZXJvX21vZGUodm9pZCkgewogICAgZ196ZXJvTW9kZSA9IFlFUzsKICAgIHNjcnViX3BsaXN0KCk7CiAgICBOU0xvZyhAIltDcmFuZUJhZGdlRml4XSDov5vlhaXlkK/liqjmuIXpm7bmqKHlvI/vvIglZCDnp5LvvInvvIzmioogQ3JhbmUg5oGi5aSN55qE5Y6G5Y+y6KeS5qCH5Y6L5oiQIDAiLCBaRVJPX01PREVfU0VDT05EUyk7CgogICAgZGlzcGF0Y2hfcXVldWVfdCBxID0gZGlzcGF0Y2hfZ2V0X2dsb2JhbF9xdWV1ZShRT1NfQ0xBU1NfVVRJTElUWSwgMCk7CiAgICAvLyDmr48gMiDnp5Lph43liLfkuIDmrKHvvIzpmLLmraIgQ3JhbmUg5Zyo5oGi5aSN6L+H56iL5Lit5YiG5om55YaZ5ZueCiAgICBmb3IgKGludCBpID0gMTsgaSA8PSBaRVJPX01PREVfU0VDT05EUyAvIDI7IGkrKykgewogICAgICAgIGRpc3BhdGNoX2FmdGVyKGRpc3BhdGNoX3RpbWUoRElTUEFUQ0hfVElNRV9OT1csIChpbnQ2NF90KShpICogMi4wICogTlNFQ19QRVJfU0VDKSksIHEsIF57CiAgICAgICAgICAgIGlmIChnX3plcm9Nb2RlKSBzY3J1Yl9wbGlzdCgpOwogICAgICAgIH0pOwogICAgfQogICAgZGlzcGF0Y2hfYWZ0ZXIoZGlzcGF0Y2hfdGltZShESVNQQVRDSF9USU1FX05PVywgKGludDY0X3QpKFpFUk9fTU9ERV9TRUNPTkRTICogTlNFQ19QRVJfU0VDKSksIHEsIF57CiAgICAgICAgZ196ZXJvTW9kZSA9IE5POwogICAgICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIOWQr+WKqOa4hembtuaooeW8j+e7k+adn++8jOaBouWkjeato+W4uOiuoeaVsOaYvuekuiIpOwogICAgfSk7Cn0KCiNwcmFnbWEgbWFyayAtIOabv+aNouWHveaVsAoKLy8gcGVyLWNvbnRhaW5lciDor7vlj5blh7rlj6PvvJrlv6vmjbfoj5zljZXotbDov5nph4zvvIxHZXRBcHBDb3VudCDmsYLlkozkuZ/otbDov5nph4wKc3RhdGljIHVuc2lnbmVkIGxvbmcgbG9uZyByZXBfR2V0Q29udGFpbmVyQ291bnQoaWQgYXBwSUQsIGlkIGNvbnRhaW5lcklELCB1bnNpZ25lZCBsb25nIGxvbmcgZmxhZykgewogICAgdW5zaWduZWQgbG9uZyBsb25nIGNudCA9IG9yaWdfR2V0Q29udGFpbmVyQ291bnQgPyBvcmlnX0dldENvbnRhaW5lckNvdW50KGFwcElELCBjb250YWluZXJJRCwgZmxhZykgOiAwOwogICAgcmVtZW1iZXJfY29udGFpbmVyKGFwcElELCBjb250YWluZXJJRCk7CiAgICBpZiAoY250ID4gMCAmJiAoZ196ZXJvTW9kZSB8fCBpc19jbGVhcmVkKGFwcElEKSkpIHsKICAgICAgICBOU0xvZyhAIltDcmFuZUJhZGdlRml4XSDmipHliLblrrnlmajop5LmoIcgJWxsdSAoYXBwPSVAIGNvbnRhaW5lcj0lQCB6ZXJvPSVkKSIsCiAgICAgICAgICAgICAgY250LCBhcHBJRCwgY29udGFpbmVySUQsIGdfemVyb01vZGUpOwogICAgICAgIHJldHVybiAwOwogICAgfQogICAgcmV0dXJuIGNudDsKfQoKLy8gYXBwIOe6p+ivu+WPluWHuuWPo++8iOWbvuagh+inkuagh+axguWSjO+8iQpzdGF0aWMgdW5zaWduZWQgbG9uZyBsb25nIHJlcF9HZXRBcHBDb3VudChpZCBhcHBJRCwgdW5zaWduZWQgbG9uZyBsb25nIGZsYWcpIHsKICAgIHVuc2lnbmVkIGxvbmcgbG9uZyBjbnQgPSBvcmlnX0dldEFwcENvdW50ID8gb3JpZ19HZXRBcHBDb3VudChhcHBJRCwgZmxhZykgOiAwOwogICAgaWYgKGNudCA+IDAgJiYgKGdfemVyb01vZGUgfHwgaXNfY2xlYXJlZChhcHBJRCkpKSB7CiAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0g5oqR5Yi2IGFwcCDop5LmoIcgJWxsdSAoYXBwPSVAIHplcm89JWQpIiwgY250LCBhcHBJRCwgZ196ZXJvTW9kZSk7CiAgICAgICAgcmV0dXJuIDA7CiAgICB9CiAgICByZXR1cm4gY250Owp9CgovLyDlhpnlhaXlh7rlj6PvvJrmuIXpm7bmqKHlvI/kuIvmiorpnZ7pm7borqHmlbDljovmiJAgMO+8jOW5tue7jyBvcmlnIOWbnuWGme+8iHBsaXN0IOmaj+S5i+W5suWHgO+8iQpzdGF0aWMgdm9pZCByZXBfU2V0Q29udGFpbmVyQ291bnQoaWQgYXBwSUQsIGlkIGNvbnRhaW5lcklELCB1bnNpZ25lZCBsb25nIGxvbmcgY291bnQpIHsKICAgIHJlbWVtYmVyX2NvbnRhaW5lcihhcHBJRCwgY29udGFpbmVySUQpOwoKICAgIGlmIChnX3plcm9Nb2RlICYmIGNvdW50ID4gMCkgewogICAgICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIOa4hembtuaooeW8j+WOi+mbtiBjb250YWluZXI9JUAgY291bnQ9JWxsdSIsIGNvbnRhaW5lcklELCBjb3VudCk7CiAgICAgICAgY291bnQgPSAwOwogICAgICAgIGlmIChvcmlnX1NldENvbnRhaW5lckNvdW50KSBvcmlnX1NldENvbnRhaW5lckNvdW50KGFwcElELCBjb250YWluZXJJRCwgMCk7CiAgICAgICAgbWFya19jbGVhcmVkKGFwcElELCBZRVMpOwogICAgICAgIHJldHVybjsKICAgIH0KCiAgICBpZiAoY291bnQgPiAwKSB7CiAgICAgICAgbWFya19jbGVhcmVkKGFwcElELCBOTyk7CiAgICB9IGVsc2UgaWYgKGNvdW50ID09IDApIHsKICAgICAgICBtYXJrX2NsZWFyZWQoYXBwSUQsIFlFUyk7CiAgICB9CgogICAgaWYgKG9yaWdfU2V0Q29udGFpbmVyQ291bnQpIG9yaWdfU2V0Q29udGFpbmVyQ291bnQoYXBwSUQsIGNvbnRhaW5lcklELCBjb3VudCk7CgogICAgaWYgKGNvdW50ID09IDAgJiYgcmVhbF9TZXRFeGlzdGluZ0JhZGdlKSByZWFsX1NldEV4aXN0aW5nQmFkZ2UoYXBwSUQsIDApOwp9CgpzdGF0aWMgdm9pZCByZXBfU2V0RXhpc3RpbmdCYWRnZShpZCBhcHBJRCwgdW5zaWduZWQgbG9uZyBsb25nIGNvdW50KSB7CiAgICBpZiAoZ196ZXJvTW9kZSAmJiBjb3VudCA+IDApIGNvdW50ID0gMDsKICAgIGVsc2UgaWYgKGNvdW50ID4gMCkgbWFya19jbGVhcmVkKGFwcElELCBOTyk7CiAgICBpZiAocmVhbF9TZXRFeGlzdGluZ0JhZGdlKSByZWFsX1NldEV4aXN0aW5nQmFkZ2UoYXBwSUQsIGNvdW50KTsKfQoKLy8g5b6u5L+h5riF6KeS5qCH5YWl5Y+j77ya5o2V6I6344CM6KeS5qCH6KKr6K6+5Li6IDDjgI3nmoTkv6Hlj7cKc3RhdGljIHZvaWQgcmVwX1ByaXZTZXRCYWRnZShpZCBzZWxmLCBTRUwgX2NtZCwgaWQgYmFkZ2VOdW1iZXJPYmosIGlkIGJ1bmRsZUlELCBpZCBjb21wbGV0aW9uKSB7CiAgICBsb25nIGxvbmcgdiA9IC0xOwogICAgaWYgKGJhZGdlTnVtYmVyT2JqICYmIFtiYWRnZU51bWJlck9iaiByZXNwb25kc1RvU2VsZWN0b3I6QHNlbGVjdG9yKGxvbmdMb25nVmFsdWUpXSkgewogICAgICAgIHYgPSBbYmFkZ2VOdW1iZXJPYmogbG9uZ0xvbmdWYWx1ZV07CiAgICB9CgogICAgaWYgKHYgPT0gMCkgewogICAgICAgIC8vIOecn+ato+WIoOmZpOW3suefpeWuueWZqOadoeebru+8iOWbnuWGmSBwbGlzdO+8jOaMgeS5heWMlu+8ie+8jOWGjeaJk+agh+iusOWFnOW6leacquiusOW9leWIsOeahOWuueWZqAogICAgICAgIHB1cmdlX2NvbnRhaW5lcnMoYnVuZGxlSUQpOwogICAgICAgIG1hcmtfY2xlYXJlZChidW5kbGVJRCwgWUVTKTsKICAgICAgICBOU0xvZyhAIltDcmFuZUJhZGdlRml4XSDmjZXojrcgc2V0QmFkZ2VOdW1iZXI6MCBhcHA9JUDvvIzlt7LmuIXpm7blhajpg6jlrrnlmagiLCBidW5kbGVJRCk7CiAgICB9IGVsc2UgaWYgKHYgPiAwKSB7CiAgICAgICAgbWFya19jbGVhcmVkKGJ1bmRsZUlELCBOTyk7CiAgICB9CgogICAgaWYgKG9yaWdfUHJpdlNldEJhZGdlKSBvcmlnX1ByaXZTZXRCYWRnZShzZWxmLCBfY21kLCBiYWRnZU51bWJlck9iaiwgYnVuZGxlSUQsIGNvbXBsZXRpb24pOwp9CgojcHJhZ21hIG1hcmsgLSDlhaXlj6MKCnN0YXRpYyB2b2lkIGluc3RhbGxfaG9va3Modm9pZCkgewogICAgY29uc3QgY3JhbmVfb2Zmc190ICpvID0gY3VyX29mZnMoKTsKCiAgICBob29rX29uZSgodm9pZCAqKikmb3JpZ19HZXRDb250YWluZXJDb3VudCwgby0+Z2V0Q250LCAgICAgICJfYmFkZ2VDb3VudFN0b3JlR2V0Q29udGFpbmVyQ291bnQiLCAgICAgICh2b2lkICopcmVwX0dldENvbnRhaW5lckNvdW50KTsKICAgIGhvb2tfb25lKCh2b2lkICoqKSZvcmlnX1NldENvbnRhaW5lckNvdW50LCBvLT5zZXRDbnQsICAgICAgIl9iYWRnZUNvdW50U3RvcmVTZXRDb250YWluZXJDb3VudCIsICAgICAgKHZvaWQgKilyZXBfU2V0Q29udGFpbmVyQ291bnQpOwogICAgaG9va19vbmUoKHZvaWQgKiopJm9yaWdfR2V0QXBwQ291bnQsICAgICAgIG8tPmdldEFwcCwgICAgICAiX2JhZGdlQ291bnRTdG9yZUdldEFwcENvdW50IiwgICAgICAgICAgICAodm9pZCAqKXJlcF9HZXRBcHBDb3VudCk7CiAgICBob29rX29uZSgodm9pZCAqKikmb3JpZ19Qcml2U2V0QmFkZ2UsICAgICAgby0+cHJpdlNldCwgICAgICJfcHJpdlNldEJhZGdlTnVtYmVySG9vayIsICAgICAgICAgICAgICAgKHZvaWQgKilyZXBfUHJpdlNldEJhZGdlKTsKCiAgICAvLyDov5nkuKrkuI3lnKggaG9vayDliJfooajph4zvvIzlj6rkvZzkuLrjgIzmuIXpm7blkI7lhpnlm54gYXBwIOe6p+OAjeeahOi+heWKqeWHuuWPowogICAgcmVhbF9TZXRFeGlzdGluZ0JhZGdlID0gKHNldEV4aXN0aW5nQmFkZ2VfdCljcmFuZV9mbihvLT5zZXRFeGlzdGluZyk7CiAgICBpZiAoIXJlYWxfU2V0RXhpc3RpbmdCYWRnZSkgcmVhbF9TZXRFeGlzdGluZ0JhZGdlID0gKHNldEV4aXN0aW5nQmFkZ2VfdClkbHN5bShSVExEX0RFRkFVTFQsICJfc2V0RXhpc3RpbmdCYWRnZUNvdW50Rm9yQXBwbGljYXRpb24iKTsKICAgIE5TTG9nKEAiW0NyYW5lQmFkZ2VGaXhdIHNldEV4aXN0aW5nQmFkZ2Ug5Ye65Y+jIEAlcCIsIHJlYWxfU2V0RXhpc3RpbmdCYWRnZSk7CgogICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0gdjAuNCBob29rIOWuieijheWujOaIkO+8iENyYW5lU0I9JXMgc2xpZGU9JXAgYXJjaD0lc++8iSIsCiAgICAgICAgICBnX2NyYW5lUGF0aCA/IGdfY3JhbmVQYXRoIDogIj8iLCAodm9pZCAqKWdfc2xpZGUsIGdfYXJtNjRlID8gImFybTY0ZSIgOiAiYXJtNjQiKTsKfQoKX19hdHRyaWJ1dGVfXygoY29uc3RydWN0b3IpKSBzdGF0aWMgdm9pZCBDQkZJbml0KHZvaWQpIHsKICAgIEBhdXRvcmVsZWFzZXBvb2wgewogICAgICAgIHJlc29sdmVfc3Vic3RyYXRlKCk7CiAgICAgICAgaWYgKCFwTVNIb29rRnVuY3Rpb24pIHsKICAgICAgICAgICAgTlNMb2coQCJbQ3JhbmVCYWRnZUZpeF0gc3Vic3RyYXRlIOS4jeWPr+eUqO+8jOmAgOWHuiIpOwogICAgICAgICAgICByZXR1cm47CiAgICAgICAgfQoKICAgICAgICBnX2NsZWFyZWRBcHBzID0gW1tOU011dGFibGVTZXQgYWxsb2NdIGluaXRdOwogICAgICAgIGdfY29udGFpbmVycyAgPSBbW05TTXV0YWJsZURpY3Rpb25hcnkgYWxsb2NdIGluaXRdOwoKICAgICAgICAvLyBDcmFuZVNCIOS4juacrCBkeWxpYiDlkIzkuLogU3ByaW5nQm9hcmQg5rOo5YWl77yM5Yqg6L296aG65bqP5LiN5L+d6K+B77yM5YGa6YeN6K+VCiAgICAgICAgZGlzcGF0Y2hfcXVldWVfdCBxID0gZGlzcGF0Y2hfZ2V0X2dsb2JhbF9xdWV1ZShRT1NfQ0xBU1NfVVNFUl9JTklUSUFURUQsIDApOwogICAgICAgIGNvbnN0IGRvdWJsZSBkZWxheXNbXSA9IHsgMC4wLCAwLjUsIDEuNSwgMy4wLCA2LjAgfTsKICAgICAgICBmb3IgKHNpemVfdCBpID0gMDsgaSA8IHNpemVvZihkZWxheXMpIC8gc2l6ZW9mKGRlbGF5c1swXSk7IGkrKykgewogICAgICAgICAgICBkaXNwYXRjaF9hZnRlcihkaXNwYXRjaF90aW1lKERJU1BBVENIX1RJTUVfTk9XLCAoaW50NjRfdCkoZGVsYXlzW2ldICogTlNFQ19QRVJfU0VDKSksIHEsIF57CiAgICAgICAgICAgICAgICBpZiAoZ19pbml0ZWQpIHJldHVybjsKICAgICAgICAgICAgICAgIGlmICghbG9jYXRlX2NyYW5lKCkpIHsKICAgICAgICAgICAgICAgICAgICBOU0xvZyhAIltDcmFuZUJhZGdlRml4XSDlsJrmnKrmib7liLAgQ3JhbmVTQu+8jCUuMWZzIOWQjumHjeivlSIsIGRlbGF5c1tpXSArIDEuMCk7CiAgICAgICAgICAgICAgICAgICAgcmV0dXJuOwogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgZ19pbml0ZWQgPSBZRVM7CiAgICAgICAgICAgICAgICBpbnN0YWxsX2hvb2tzKCk7CiAgICAgICAgICAgICAgICBzY2hlZHVsZV96ZXJvX21vZGUoKTsKICAgICAgICAgICAgfSk7CiAgICAgICAgfQogICAgfQp9Cg==
+/*
+ * CraneBadgeFix v0.4
+ * ===================
+ * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，快捷菜单（Haptic Touch）
+ * 仍残留 per-container 未读数」，并且让清零结果持久化（重启 SpringBoard 后
+ * 角标不再复活）。
+ *
+ * ── 根因（CraneSB.dylib 1.3.17 反汇编确认）────────────────────────────
+ *   - 图标角标   = _badgeCountStoreGetAppCount(appID, 1)：遍历容器求和。
+ *   - 快捷菜单   = _badgeCountStoreGetContainerCount(appID, cid, 1)：
+ *                  每个容器单独显示（调用点 _crane_replacementMenu @0xf798）。
+ *   - 微信清角标走 -setBadgeNumber:forBundleIdentifier:withCompletionHandler:，
+ *     被 Crane 的 _privSetBadgeNumberHook(@0x7c5c) 拦截。它拿不到 containerID
+ *     时（0x7cc0 cbz / 0x7d14 cbz x23）会走「直接透传」分支(0x7db0)：
+ *     系统角标被置 0（图标角标因此消失），但 Crane 的 per-container 缓存
+ *     与 BadgeStore.plist 完全没动 → 快捷菜单继续显示历史值。
+ *
+ * ── v0.3 为什么完全无效（本次实测定位）──────────────────────────────
+ *   CraneSB 的 LC_DYLD_EXPORTS_TRIE 里 **不包含** badge 相关符号：
+ *     _privSetBadgeNumberHook / _badgeCountStoreGetContainerCount /
+ *     _badgeCountStoreSetContainerCount / _setExistingBadgeCountForApplication
+ *   它们虽在 symtab（N_SECT|N_EXT）但未导出 → dlsym() 全部返回 NULL，
+ *   三个 hook 一个都没挂上。所以 v0.3 装上等于没装。
+ *
+ * ── v0.4 定位方案 ──────────────────────────────────────────────────
+ *   CraneSB 两个分片的 __TEXT vmaddr 均为 0，symtab 的 n_value 即 vmaddr，
+ *   故 运行时地址 = slide + vmaddr。
+ *     slide   ← _dyld_get_image_vmaddr_slide(index)
+ *     分片    ← mh->cpusubtype == 0x80000002 → arm64e；== 0 → arm64
+ *   先按地址下钩，dlsym 仅作为 fallback。
+ *
+ * ── 持久化 ─────────────────────────────────────────────────────────
+ *   v0.3 的 postinst 删了 BadgeStore.plist，但没重启 SpringBoard，Crane 在
+ *   退出时把内存里的旧计数又写回 plist → 用户看到「重启后角标又回来」。
+ *   v0.4 改为：启动后 12 秒「清零模式」把 Crane 从 plist 恢复的存量计数
+ *   压成 0（经 orig 回写，plist 随之变干净），同时启动时直接递归清零
+ *   BadgeStore.plist 里的所有数字。postinst 不再 killall SpringBoard，
+ *   装完补丁需用户手动重启一次 SpringBoard（或关机重启）才生效。
+ *
+ * 编译：.github/workflows/build.yml 直编，纯 arm64e。
+ */
+
+#import <Foundation/Foundation.h>
+#import <objc/runtime.h>
+#import <dlfcn.h>
+#import <mach-o/dyld.h>
+#import <mach-o/loader.h>
+#import <pthread.h>
+#import <string.h>
+
+#pragma mark - substrate
+
+typedef void (*MSHookFunction_t)(void *symbol, void *hook, void **old);
+static MSHookFunction_t pMSHookFunction = NULL;
+
+static void resolve_substrate(void) {
+    void *h = dlopen("/usr/lib/libsubstrate.dylib", RTLD_NOW);
+    if (!h) h = dlopen("/usr/lib/ellekit.dylib", RTLD_NOW);
+    if (!h) h = dlopen("/usr/lib/substrate.dylib", RTLD_NOW);
+    if (h) pMSHookFunction = (MSHookFunction_t)dlsym(h, "MSHookFunction");
+    if (!pMSHookFunction) pMSHookFunction = (MSHookFunction_t)dlsym(h ? h : RTLD_DEFAULT, "MSHookFunction");
+    if (!pMSHookFunction) pMSHookFunction = (MSHookFunction_t)dlsym(RTLD_DEFAULT, "MSHookFunction");
+}
+
+#pragma mark - 定位 CraneSB：slide + cpusubtype
+
+static uintptr_t g_slide = 0;
+static BOOL      g_arm64e = NO;
+static const char *g_cranePath = NULL;
+
+typedef struct {
+    uintptr_t getCnt;       // _badgeCountStoreGetContainerCount
+    uintptr_t setCnt;       // _badgeCountStoreSetContainerCount
+    uintptr_t getApp;       // _badgeCountStoreGetAppCount
+    uintptr_t setExisting;  // _setExistingBadgeCountForApplication
+    uintptr_t privSet;      // _privSetBadgeNumberHook
+} crane_offs_t;
+
+// 1.3.17 symtab 实测偏移
+static const crane_offs_t kOffArm64e = { 0x6acc, 0x6f54, 0x6c4c, 0x69f8, 0x7c5c };
+static const crane_offs_t kOffArm64  = { 0x6734, 0x6b34, 0x689c, 0x6590, 0x7774 };
+
+static const crane_offs_t *cur_offs(void) { return g_arm64e ? &kOffArm64e : &kOffArm64; }
+
+static BOOL locate_crane(void) {
+    uint32_t n = _dyld_image_count();
+    for (uint32_t i = 0; i < n; i++) {
+        const char *name = _dyld_get_image_name(i);
+        if (!name || !strstr(name, "CraneSB")) continue;
+        g_slide = (uintptr_t)_dyld_get_image_vmaddr_slide(i);
+        const struct mach_header *mh = _dyld_get_image_header(i);
+        if (mh && mh->magic == MH_MAGIC_64) {
+            uint32_t sub = mh->cpusubtype & 0x00FFFFFFu;
+            g_arm64e = (sub == 2);           // CPU_SUBTYPE_ARM64E
+        }
+        g_cranePath = name;
+        return YES;
+    }
+    return NO;
+}
+
+static void *crane_fn(uintptr_t off) {
+    if (!g_slide) return NULL;
+    return (void *)(g_slide + off);
+}
+
+// 先按 slide+vmaddr 下钩；若 orig 仍为 NULL（地址不对）再退回 dlsym
+static BOOL hook_one(void **orig, uintptr_t off, const char *sym, void *hook) {
+    void *byAddr = crane_fn(off);
+    if (byAddr) {
+        memset(orig, 0, sizeof(void *));
+        pMSHookFunction(byAddr, hook, orig);
+        if (*orig) {
+            NSLog(@"[CraneBadgeFix] hooked %-34s @%p (slide+0x%lx)", sym, byAddr, (unsigned long)off);
+            return YES;
+        }
+        NSLog(@"[CraneBadgeFix] slide+0x%lx 对 %s 下钩失败（地址无效），退回 dlsym", (unsigned long)off, sym);
+    }
+    void *viaSym = dlsym(RTLD_DEFAULT, sym);
+    if (viaSym) {
+        memset(orig, 0, sizeof(void *));
+        pMSHookFunction(viaSym, hook, orig);
+        if (*orig) {
+            NSLog(@"[CraneBadgeFix] hooked %-34s @%p (dlsym)", sym, viaSym);
+            return YES;
+        }
+    }
+    NSLog(@"[CraneBadgeFix] *** 目标函数 %s 无法定位，补丁不完整 ***", sym);
+    return NO;
+}
+
+#pragma mark - CraneSB 函数签名（arm64e 反汇编确认）
+
+typedef unsigned long long (*getContainerCount_t)(id appID, id containerID, unsigned long long flag);
+typedef void              (*setContainerCount_t)(id appID, id containerID, unsigned long long count);
+typedef unsigned long long (*getAppCount_t)(id appID, unsigned long long flag);
+typedef void              (*setExistingBadge_t)(id appID, unsigned long long count);
+typedef void              (*privSetBadge_t)(id self, SEL _cmd, id badgeNumberObj, id bundleID, id completion);
+
+static getContainerCount_t orig_GetContainerCount = NULL;
+static setContainerCount_t orig_SetContainerCount = NULL;
+static getAppCount_t       orig_GetAppCount       = NULL;
+static privSetBadge_t      orig_PrivSetBadge      = NULL;
+static setExistingBadge_t  real_SetExistingBadge  = NULL;
+
+#pragma mark - 状态
+
+static NSMutableSet       *g_clearedApps = nil;   // 角标已确认清零的 bundle id
+static NSMutableDictionary *g_containers = nil;   // appID -> NSMutableSet(containerID)
+static pthread_mutex_t      g_lock = PTHREAD_MUTEX_INITIALIZER;
+static volatile BOOL        g_zeroMode = NO;      // 启动清零模式
+static BOOL                 g_inited = NO;
+
+static BOOL is_string(id o) { return o && [o isKindOfClass:[NSString class]]; }
+
+static void mark_cleared(id appID, BOOL cleared) {
+    if (!is_string(appID)) return;
+    pthread_mutex_lock(&g_lock);
+    if (cleared) {
+        if (![g_clearedApps containsObject:appID]) {
+            [g_clearedApps addObject:appID];
+            NSLog(@"[CraneBadgeFix] 已清零标记: %@", appID);
+        }
+    } else {
+        if ([g_clearedApps containsObject:appID]) {
+            [g_clearedApps removeObject:appID];
+            NSLog(@"[CraneBadgeFix] 撤销清零标记: %@", appID);
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+}
+
+static BOOL is_cleared(id appID) {
+    if (!is_string(appID)) return NO;
+    pthread_mutex_lock(&g_lock);
+    BOOL r = [g_clearedApps containsObject:appID];
+    pthread_mutex_unlock(&g_lock);
+    return r;
+}
+
+static void remember_container(id appID, id containerID) {
+    if (!is_string(appID) || !is_string(containerID)) return;
+    pthread_mutex_lock(&g_lock);
+    NSMutableSet *s = g_containers[appID];
+    if (!s) { s = [NSMutableSet set]; g_containers[appID] = s; }
+    [s addObject:containerID];
+    pthread_mutex_unlock(&g_lock);
+}
+
+static void purge_containers(id appID) {
+    if (!is_string(appID) || !orig_SetContainerCount) return;
+    pthread_mutex_lock(&g_lock);
+    NSArray *cids = [g_containers[appID] allObjects];
+    pthread_mutex_unlock(&g_lock);
+    for (id cid in cids) orig_SetContainerCount(appID, cid, 0);
+    if (cids.count)
+        NSLog(@"[CraneBadgeFix] 清空 %@ 的 %lu 个容器计数", appID, (unsigned long)cids.count);
+}
+
+#pragma mark - BadgeStore.plist 存量清零
+
+static id scrub_value(id v) {
+    if ([v isKindOfClass:[NSNumber class]]) return @0;
+    if ([v isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *src = (NSDictionary *)v;
+        NSMutableDictionary *m = [NSMutableDictionary dictionaryWithCapacity:src.count];
+        for (id k in src) m[k] = scrub_value(src[k]);
+        return m;
+    }
+    if ([v isKindOfClass:[NSArray class]]) {
+        NSArray *src = (NSArray *)v;
+        NSMutableArray *a = [NSMutableArray arrayWithCapacity:src.count];
+        for (id e in src) [a addObject:scrub_value(e)];
+        return a;
+    }
+    return v;
+}
+
+static void scrub_plist(void) {
+    static const char *paths[] = {
+        "/var/jb/var/mobile/Library/Crane/BadgeStore.plist",
+        "/var/mobile/Library/Crane/BadgeStore.plist"
+    };
+    for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+        NSString *p = [NSString stringWithUTF8String:paths[i]];
+        NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:p];
+        if (!d) continue;
+        NSDictionary *clean = scrub_value(d);
+        if ([clean writeToFile:p atomically:YES]) {
+            NSLog(@"[CraneBadgeFix] 已清零 BadgeStore.plist: %@", p);
+        } else {
+            NSLog(@"[CraneBadgeFix] 写回 BadgeStore.plist 失败: %@", p);
+        }
+    }
+}
+
+#pragma mark - 启动清零模式
+
+#define ZERO_MODE_SECONDS 12
+
+static void schedule_zero_mode(void) {
+    g_zeroMode = YES;
+    scrub_plist();
+    NSLog(@"[CraneBadgeFix] 进入启动清零模式（%d 秒），把 Crane 恢复的历史角标压成 0", ZERO_MODE_SECONDS);
+
+    dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
+    // 每 2 秒重刷一次，防止 Crane 在恢复过程中分批写回
+    for (int i = 1; i <= ZERO_MODE_SECONDS / 2; i++) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 2.0 * NSEC_PER_SEC)), q, ^{
+            if (g_zeroMode) scrub_plist();
+        });
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ZERO_MODE_SECONDS * NSEC_PER_SEC)), q, ^{
+        g_zeroMode = NO;
+        NSLog(@"[CraneBadgeFix] 启动清零模式结束，恢复正常计数显示");
+    });
+}
+
+#pragma mark - 替换函数
+
+// per-container 读取出口：快捷菜单走这里，GetAppCount 求和也走这里
+static unsigned long long rep_GetContainerCount(id appID, id containerID, unsigned long long flag) {
+    unsigned long long cnt = orig_GetContainerCount ? orig_GetContainerCount(appID, containerID, flag) : 0;
+    remember_container(appID, containerID);
+    if (cnt > 0 && (g_zeroMode || is_cleared(appID))) {
+        NSLog(@"[CraneBadgeFix] 抑制容器角标 %llu (app=%@ container=%@ zero=%d)",
+              cnt, appID, containerID, g_zeroMode);
+        return 0;
+    }
+    return cnt;
+}
+
+// app 级读取出口（图标角标求和）
+static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
+    unsigned long long cnt = orig_GetAppCount ? orig_GetAppCount(appID, flag) : 0;
+    if (cnt > 0 && (g_zeroMode || is_cleared(appID))) {
+        NSLog(@"[CraneBadgeFix] 抑制 app 角标 %llu (app=%@ zero=%d)", cnt, appID, g_zeroMode);
+        return 0;
+    }
+    return cnt;
+}
+
+// 写入出口：清零模式下把非零计数压成 0，并经 orig 回写（plist 随之干净）
+static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
+    remember_container(appID, containerID);
+
+    if (g_zeroMode && count > 0) {
+        NSLog(@"[CraneBadgeFix] 清零模式压零 container=%@ count=%llu", containerID, count);
+        count = 0;
+        if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, 0);
+        mark_cleared(appID, YES);
+        return;
+    }
+
+    if (count > 0) {
+        mark_cleared(appID, NO);
+    } else if (count == 0) {
+        mark_cleared(appID, YES);
+    }
+
+    if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
+
+    if (count == 0 && real_SetExistingBadge) real_SetExistingBadge(appID, 0);
+}
+
+static void rep_SetExistingBadge(id appID, unsigned long long count) {
+    if (g_zeroMode && count > 0) count = 0;
+    else if (count > 0) mark_cleared(appID, NO);
+    if (real_SetExistingBadge) real_SetExistingBadge(appID, count);
+}
+
+// 微信清角标入口：捕获「角标被设为 0」的信号
+static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, id completion) {
+    long long v = -1;
+    if (badgeNumberObj && [badgeNumberObj respondsToSelector:@selector(longLongValue)]) {
+        v = [badgeNumberObj longLongValue];
+    }
+
+    if (v == 0) {
+        // 真正删除已知容器条目（回写 plist，持久化），再打标记兜底未记录到的容器
+        purge_containers(bundleID);
+        mark_cleared(bundleID, YES);
+        NSLog(@"[CraneBadgeFix] 捕获 setBadgeNumber:0 app=%@，已清零全部容器", bundleID);
+    } else if (v > 0) {
+        mark_cleared(bundleID, NO);
+    }
+
+    if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
+}
+
+#pragma mark - 入口
+
+static void install_hooks(void) {
+    const crane_offs_t *o = cur_offs();
+
+    hook_one((void **)&orig_GetContainerCount, o->getCnt,      "_badgeCountStoreGetContainerCount",      (void *)rep_GetContainerCount);
+    hook_one((void **)&orig_SetContainerCount, o->setCnt,      "_badgeCountStoreSetContainerCount",      (void *)rep_SetContainerCount);
+    hook_one((void **)&orig_GetAppCount,       o->getApp,      "_badgeCountStoreGetAppCount",            (void *)rep_GetAppCount);
+    hook_one((void **)&orig_PrivSetBadge,      o->privSet,     "_privSetBadgeNumberHook",               (void *)rep_PrivSetBadge);
+
+    // 这个不在 hook 列表里，只作为「清零后写回 app 级」的辅助出口
+    real_SetExistingBadge = (setExistingBadge_t)crane_fn(o->setExisting);
+    if (!real_SetExistingBadge) real_SetExistingBadge = (setExistingBadge_t)dlsym(RTLD_DEFAULT, "_setExistingBadgeCountForApplication");
+    NSLog(@"[CraneBadgeFix] setExistingBadge 出口 @%p", real_SetExistingBadge);
+
+    NSLog(@"[CraneBadgeFix] v0.4 hook 安装完成（CraneSB=%s slide=%p arch=%s）",
+          g_cranePath ? g_cranePath : "?", (void *)g_slide, g_arm64e ? "arm64e" : "arm64");
+}
+
+__attribute__((constructor)) static void CBFInit(void) {
+    @autoreleasepool {
+        resolve_substrate();
+        if (!pMSHookFunction) {
+            NSLog(@"[CraneBadgeFix] substrate 不可用，退出");
+            return;
+        }
+
+        g_clearedApps = [[NSMutableSet alloc] init];
+        g_containers  = [[NSMutableDictionary alloc] init];
+
+        // CraneSB 与本 dylib 同为 SpringBoard 注入，加载顺序不保证，做重试
+        dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+        const double delays[] = { 0.0, 0.5, 1.5, 3.0, 6.0 };
+        for (size_t i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delays[i] * NSEC_PER_SEC)), q, ^{
+                if (g_inited) return;
+                if (!locate_crane()) {
+                    NSLog(@"[CraneBadgeFix] 尚未找到 CraneSB，%.1fs 后重试", delays[i] + 1.0);
+                    return;
+                }
+                g_inited = YES;
+                install_hooks();
+                schedule_zero_mode();
+            });
+        }
+    }
+}

@@ -1,1 +1,121 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwojIC0qLSBjb2Rpbmc6IHV0Zi04IC0qLQoiIiIKQ3JhbmVCYWRnZUZpeCBkZWIg5omT5YyF5Zmo77yI6Zu25L6d6LWW77yMUHl0aG9uIOagh+WHhuW6k++8ieOAggrlnKggbWFjT1MgR2l0SHViIEFjdGlvbnMgcnVubmVyIOS4iuaXoCBkcGtnLWRlYu+8jOaVheaJi+WGmSBhciArIHRhci5neiDnlJ/miJDmoIflh4YgLmRlYuOAggoKLmRlYiDnu5PmnoTvvIhkcGtnL0N5ZGlhIOWdh+WFvOWuue+8ie+8mgogICE8YXJjaD5cbgogIGRlYmlhbi1iaW5hcnkgICAgICAgICAgIOWGheWuuSAiMi4wXG4iCiAgY29udHJvbC50YXIuZ3ogICAgICAgICAg5ZCrIC4vY29udHJvbCAuL3Bvc3RpbnN077yI57u05oqk6ISa5pys77yJCiAgZGF0YS50YXIuZ3ogICAgICAgICAgICAg5ZCr5a6e6ZmF5a6J6KOF5paH5Lu2CiIiIgppbXBvcnQgaW8sIG9zLCBzeXMsIHRhcmZpbGUsIHBsaXN0bGliCgpST09UID0gb3MucGF0aC5kaXJuYW1lKG9zLnBhdGguYWJzcGF0aChfX2ZpbGVfXykpCkRZTElCID0gb3MucGF0aC5qb2luKFJPT1QsICJvdXQiLCAiQ3JhbmVCYWRnZUZpeC5keWxpYiIpClBMSVNUID0gb3MucGF0aC5qb2luKFJPT1QsICJDcmFuZUJhZGdlRml4LnBsaXN0IikKQ09OVFJPTCA9IG9zLnBhdGguam9pbihST09ULCAiY29udHJvbCIpClBPU1RJTlNUID0gb3MucGF0aC5qb2luKFJPT1QsICJwb3N0aW5zdCIpCgoKZGVmIGNvbnRyb2xfZmllbGQoZmllbGQpOgogICAgIiIi5LuOIGNvbnRyb2wg6K+75Y+W5a2X5q615YC877yI6YG/5YWN54mI5pys5Y+3L+aetuaehOehrOe8lueggea8guenu++8ieOAgiIiIgogICAgd2l0aCBvcGVuKENPTlRST0wsICJyYiIpIGFzIGY6CiAgICAgICAgcmF3ID0gZi5yZWFkKCkuZGVjb2RlKCJ1dGYtOCIsICJyZXBsYWNlIikKICAgIGZvciBsaW5lIGluIHJhdy5zcGxpdGxpbmVzKCk6CiAgICAgICAgaWYgbGluZS5sb3dlcigpLnN0YXJ0c3dpdGgoZmllbGQubG93ZXIoKSArICI6Iik6CiAgICAgICAgICAgIHJldHVybiBsaW5lLnNwbGl0KCI6IiwgMSlbMV0uc3RyaXAoKQogICAgcmV0dXJuIE5vbmUKCgpWRVJTSU9OID0gY29udHJvbF9maWVsZCgiVmVyc2lvbiIpIG9yICIwLjAuMCIKQVJDSCA9IGNvbnRyb2xfZmllbGQoIkFyY2hpdGVjdHVyZSIpIG9yICJpcGhvbmVvcy1hcm02NGUiCk9VVCA9IG9zLnBhdGguam9pbihST09ULCAib3V0IiwgZiJjb20uODJmbGV4LmNyYW5lYmFkZ2VmaXhfe1ZFUlNJT059X3tBUkNIfS5kZWIiKQoKCmRlZiB0YXJfZ3ooZW50cmllcywgbW9kZT0wbzY0NCk6CiAgICAiIiJlbnRyaWVzOiBsaXN0IG9mIChhcmNuYW1lLCBsb2NhbF9wYXRoIG9yIChuYW1lLCBieXRlcywgbW9kZSkpIiIiCiAgICBidWYgPSBpby5CeXRlc0lPKCkKICAgIHdpdGggdGFyZmlsZS5vcGVuKGZpbGVvYmo9YnVmLCBtb2RlPSJ3Omd6IikgYXMgdGY6CiAgICAgICAgZm9yIGFyYywgcGF5bG9hZCBpbiBlbnRyaWVzOgogICAgICAgICAgICBpZiBpc2luc3RhbmNlKHBheWxvYWQsIHR1cGxlKToKICAgICAgICAgICAgICAgIG5hbWUsIGRhdGEsIG0gPSBwYXlsb2FkCiAgICAgICAgICAgICAgICB0aSA9IHRhcmZpbGUuVGFySW5mbyhuYW1lPW5hbWUpCiAgICAgICAgICAgICAgICB0aS5zaXplID0gbGVuKGRhdGEpCiAgICAgICAgICAgICAgICB0aS5tb2RlID0gbQogICAgICAgICAgICAgICAgdGkubXRpbWUgPSAwCiAgICAgICAgICAgICAgICB0Zi5hZGRmaWxlKHRpLCBpby5CeXRlc0lPKGRhdGEpKQogICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgdGkgPSB0YXJmaWxlLlRhckluZm8obmFtZT1hcmMpCiAgICAgICAgICAgICAgICB0aS5zaXplID0gb3MucGF0aC5nZXRzaXplKHBheWxvYWQpCiAgICAgICAgICAgICAgICB0aS5tb2RlID0gbW9kZQogICAgICAgICAgICAgICAgdGkubXRpbWUgPSAwCiAgICAgICAgICAgICAgICB3aXRoIG9wZW4ocGF5bG9hZCwgInJiIikgYXMgZjoKICAgICAgICAgICAgICAgICAgICB0Zi5hZGRmaWxlKHRpLCBmKQogICAgcmV0dXJuIGJ1Zi5nZXR2YWx1ZSgpCgoKZGVmIGFyX2VudHJ5KG5hbWUsIGRhdGEpOgogICAgIiIi5qCH5YeGIEdOVSBhciDmiJDlkZjlpLTvvIg2MCDlrZfoioLvvInjgIIiIiIKICAgIGFzc2VydCBsZW4obmFtZSkgPD0gMTUsIG5hbWUKICAgIGggPSBieXRlYXJyYXkoKQogICAgaCArPSBuYW1lLmxqdXN0KDE2KS5lbmNvZGUoKSAgICAgICMgbmFtZSAoMTYpCiAgICBoICs9IGIiMCIucmp1c3QoMTIsIGIiMCIpICAgICAgICAgIyBtdGltZSAoMTIpCiAgICBoICs9IGIiMCIucmp1c3QoNiwgYiIwIikgICAgICAgICAgIyB1aWQgKDYpCiAgICBoICs9IGIiMCIucmp1c3QoNiwgYiIwIikgICAgICAgICAgIyBnaWQgKDYpCiAgICBoICs9IGIiMTAwNjQ0Ii5yanVzdCg4LCBiIjAiKSAgICAgIyBtb2RlICg4LCDlhavov5vliLYpCiAgICBoICs9IHN0cihsZW4oZGF0YSkpLnJqdXN0KDEwKS5lbmNvZGUoKSAgIyBzaXplICgxMCkKICAgIGggKz0gYiJceDYwXG4iICAgICAgICAgICAgICAgICAgICAjIOe7k+adn+agh+iusCAoMikKICAgIGFzc2VydCBsZW4oaCkgPT0gNjAsIGxlbihoKQogICAgYm9keSA9IGRhdGEgKyAoYiJcbiIgaWYgbGVuKGRhdGEpICUgMiBlbHNlIGIiIikKICAgIHJldHVybiBieXRlcyhoKSArIGJvZHkKCgpkZWYgbWFpbigpOgogICAgZm9yIHAgaW4gKERZTElCLCBQTElTVCwgQ09OVFJPTCwgUE9TVElOU1QpOgogICAgICAgIGlmIG5vdCBvcy5wYXRoLmV4aXN0cyhwKToKICAgICAgICAgICAgc3lzLmV4aXQoZiJtaXNzaW5nOiB7cH0iKQoKICAgIG9zLm1ha2VkaXJzKG9zLnBhdGguZGlybmFtZShPVVQpLCBleGlzdF9vaz1UcnVlKQoKICAgIGRlYmlhbl9iaW5hcnkgPSBiIjIuMFxuIgoKICAgICMgY29udHJvbC50YXIuZ3rvvJouL2NvbnRyb2wgKyAuL3Bvc3RpbnN077yINzU177yJCiAgICAjIOmYsuW+oe+8mmNvbnRyb2wg5b+F6aG75L+d6K+B5pyr5bC+5pyJ5o2i6KGM77yM5ZCm5YiZIGRwa2cgLS11bnBhY2sg5oqlCiAgICAjICAgImVuZCBvZiBmaWxlIGR1cmluZyB2YWx1ZSBvZiBmaWVsZCAnWFhYJyAobWlzc2luZyBmaW5hbCBuZXdsaW5lKSLjgIIKICAgIGNvbnRyb2xfcmF3ID0gb3BlbihDT05UUk9MLCAicmIiKS5yZWFkKCkucnN0cmlwKGIiXHJcbiIpICsgYiJcbiIKICAgIGNvbnRyb2xfdGFyID0gdGFyX2d6KFsKICAgICAgICAoImNvbnRyb2wiLCAoImNvbnRyb2wiLCBjb250cm9sX3JhdywgMG82NDQpKSwKICAgICAgICAoInBvc3RpbnN0IiwgKCIuL3Bvc3RpbnN0Iiwgb3BlbihQT1NUSU5TVCwgInJiIikucmVhZCgpLCAwbzc1NSkpLAogICAgXSkKCiAgICAjIHBsaXN0IOi9rCBiaW5hcnkgcGxpc3TvvIhTdWJzdHJhdGUg5Y+q6K6k5ZCI5rOVIHBsaXN077yb5Y+C6ICD6KGl5LiB5ZCM5qC35piv5LqM6L+b5Yi277yJCiAgICB3aXRoIG9wZW4oUExJU1QsICJyYiIpIGFzIGY6CiAgICAgICAgcGxpc3Rfb2JqID0gcGxpc3RsaWIubG9hZChmKQogICAgcGxpc3RfYmluYXJ5ID0gcGxpc3RsaWIuZHVtcHMocGxpc3Rfb2JqLCBmbXQ9cGxpc3RsaWIuRk1UX0JJTkFSWSkKCiAgICAjIGRhdGEudGFyLmd677yaZHlsaWIoNzU1KSArIOi/h+a7pCBwbGlzdChiaW5hcnkpCiAgICBkYXRhX3RhciA9IHRhcl9neihbCiAgICAgICAgKCJMaWJyYXJ5L01vYmlsZVN1YnN0cmF0ZS9EeW5hbWljTGlicmFyaWVzL0NyYW5lQmFkZ2VGaXguZHlsaWIiLAogICAgICAgICAoIi4vTGlicmFyeS9Nb2JpbGVTdWJzdHJhdGUvRHluYW1pY0xpYnJhcmllcy9DcmFuZUJhZGdlRml4LmR5bGliIiwKICAgICAgICAgIG9wZW4oRFlMSUIsICJyYiIpLnJlYWQoKSwgMG83NTUpKSwKICAgICAgICAoIkxpYnJhcnkvTW9iaWxlU3Vic3RyYXRlL0R5bmFtaWNMaWJyYXJpZXMvQ3JhbmVCYWRnZUZpeC5wbGlzdCIsCiAgICAgICAgICgiLi9MaWJyYXJ5L01vYmlsZVN1YnN0cmF0ZS9EeW5hbWljTGlicmFyaWVzL0NyYW5lQmFkZ2VGaXgucGxpc3QiLAogICAgICAgICAgcGxpc3RfYmluYXJ5LCAwbzY0NCkpLAogICAgXSkKCiAgICAjIGFyIOW9kuahowogICAgb3V0ID0gYnl0ZWFycmF5KCkKICAgIG91dCArPSBiIiE8YXJjaD5cbiIKICAgIG91dCArPSBhcl9lbnRyeSgiZGViaWFuLWJpbmFyeSIsIGRlYmlhbl9iaW5hcnkpCiAgICBvdXQgKz0gYXJfZW50cnkoImNvbnRyb2wudGFyLmd6IiwgY29udHJvbF90YXIpCiAgICBvdXQgKz0gYXJfZW50cnkoImRhdGEudGFyLmd6IiwgZGF0YV90YXIpCgogICAgd2l0aCBvcGVuKE9VVCwgIndiIikgYXMgZjoKICAgICAgICBmLndyaXRlKGJ5dGVzKG91dCkpCiAgICBwcmludChmIltidWlsZF9kZWJdIHdyb3RlIHtPVVR9ICAoe2xlbihvdXQpfSBieXRlcykiKQoKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICBtYWluKCk=
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+CraneBadgeFix deb 打包器（零依赖，Python 标准库）。
+在 macOS GitHub Actions runner 上无 dpkg-deb，故手写 ar + tar.gz 生成标准 .deb。
+
+.deb 结构（dpkg/Cydia 均兼容）：
+  !<arch>\n
+  debian-binary           内容 "2.0\n"
+  control.tar.gz          含 ./control ./postinst（维护脚本）
+  data.tar.gz             含实际安装文件
+"""
+import io, os, sys, tarfile, plistlib
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+DYLIB = os.path.join(ROOT, "out", "CraneBadgeFix.dylib")
+PLIST = os.path.join(ROOT, "CraneBadgeFix.plist")
+CONTROL = os.path.join(ROOT, "control")
+POSTINST = os.path.join(ROOT, "postinst")
+
+
+def control_field(field):
+    """从 control 读取字段值（避免版本号/架构硬编码漂移）。"""
+    with open(CONTROL, "rb") as f:
+        raw = f.read().decode("utf-8", "replace")
+    for line in raw.splitlines():
+        if line.lower().startswith(field.lower() + ":"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+VERSION = control_field("Version") or "0.0.0"
+ARCH = control_field("Architecture") or "iphoneos-arm64e"
+OUT = os.path.join(ROOT, "out", f"com.82flex.cranebadgefix_{VERSION}_{ARCH}.deb")
+
+
+def tar_gz(entries, mode=0o644):
+    """entries: list of (arcname, local_path or (name, bytes, mode))"""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        for arc, payload in entries:
+            if isinstance(payload, tuple):
+                name, data, m = payload
+                ti = tarfile.TarInfo(name=name)
+                ti.size = len(data)
+                ti.mode = m
+                ti.mtime = 0
+                tf.addfile(ti, io.BytesIO(data))
+            else:
+                ti = tarfile.TarInfo(name=arc)
+                ti.size = os.path.getsize(payload)
+                ti.mode = mode
+                ti.mtime = 0
+                with open(payload, "rb") as f:
+                    tf.addfile(ti, f)
+    return buf.getvalue()
+
+
+def ar_entry(name, data):
+    """标准 GNU ar 成员头（60 字节）。"""
+    assert len(name) <= 15, name
+    h = bytearray()
+    h += name.ljust(16).encode()      # name (16)
+    h += b"0".rjust(12, b"0")         # mtime (12)
+    h += b"0".rjust(6, b"0")          # uid (6)
+    h += b"0".rjust(6, b"0")          # gid (6)
+    h += b"100644".rjust(8, b"0")     # mode (8, 八进制)
+    h += str(len(data)).rjust(10).encode()  # size (10)
+    h += b"\x60\n"                    # 结束标记 (2)
+    assert len(h) == 60, len(h)
+    body = data + (b"\n" if len(data) % 2 else b"")
+    return bytes(h) + body
+
+
+def main():
+    for p in (DYLIB, PLIST, CONTROL, POSTINST):
+        if not os.path.exists(p):
+            sys.exit(f"missing: {p}")
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+
+    debian_binary = b"2.0\n"
+
+    # control.tar.gz：./control + ./postinst（755）
+    # 防御：control 必须保证末尾有换行，否则 dpkg --unpack 报
+    #   "end of file during value of field 'XXX' (missing final newline)"。
+    control_raw = open(CONTROL, "rb").read().rstrip(b"\r\n") + b"\n"
+    control_tar = tar_gz([
+        ("control", ("control", control_raw, 0o644)),
+        ("postinst", ("./postinst", open(POSTINST, "rb").read(), 0o755)),
+    ])
+
+    # plist 转 binary plist（Substrate 只认合法 plist；参考补丁同样是二进制）
+    with open(PLIST, "rb") as f:
+        plist_obj = plistlib.load(f)
+    plist_binary = plistlib.dumps(plist_obj, fmt=plistlib.FMT_BINARY)
+
+    # data.tar.gz：dylib(755) + 过滤 plist(binary)
+    data_tar = tar_gz([
+        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib",
+         ("./Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib",
+          open(DYLIB, "rb").read(), 0o755)),
+        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.plist",
+         ("./Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.plist",
+          plist_binary, 0o644)),
+    ])
+
+    # ar 归档
+    out = bytearray()
+    out += b"!<arch>\n"
+    out += ar_entry("debian-binary", debian_binary)
+    out += ar_entry("control.tar.gz", control_tar)
+    out += ar_entry("data.tar.gz", data_tar)
+
+    with open(OUT, "wb") as f:
+        f.write(bytes(out))
+    print(f"[build_deb] wrote {OUT}  ({len(out)} bytes)")
+
+
+if __name__ == "__main__":
+    main()

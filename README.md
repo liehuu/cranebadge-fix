@@ -1,1 +1,169 @@
-IyBDcmFuZUJhZGdlRml4Cgrkv67lpI0gQ3JhbmUgMS4zLjE3IOWkmuW8gOW6lOeUqO+8iOW+ruS/oeetie+8ieOAjOa2iOaBr+W3suivu+WQju+8jOWbvuagh+inkuagh+W3sua2iOWkseOAgeS9huW/q+aNt+iPnOWNleS7jeaui+eVmSBwZXItY29udGFpbmVyIOacquivu+aVsOOAjeeahOeLrOeri+ihpeS4gSB0d2Vha+OAggoKIyMg4pqg77iPIHYwLjMg5aSx5pWI5aSN55uY77yI6YeN6KaB77yM6YG/5YWN6YeN6LmI77yJCgp2MC4zIOeUqCBgZGxzeW0oQ3JhbmVTQiwgIl9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudCIpYCDov5nnsbvmjInlkI3op6PmnpDjgIIK5a6e5rWL6KOF5Yiw5omL5py65LiKKirlrozlhajmsqHmlYjmnpwqKuKAlOKAlOWOn+WboOS4jeaYr+mAu+i+kemUme+8jOaYryoq56ym5Y+35Y+W5LiN5YiwKirvvJoKCuino+aekCBDcmFuZVNCLmR5bGliIOeahCBgTENfRFlMRF9FWFBPUlRTX1RSSUVgIOWQjuehruiupO+8jOS4i+WIl+espuWPtyoq5YWo6YO95LiN5Zyo5a+85Ye66KGo6YeMKirvvJoKCmBgYApfcHJpdlNldEJhZGdlTnVtYmVySG9vayAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg4pyXIOS4jeWcqCBleHBvcnQgdHJpZQpfYmFkZ2VDb3VudFN0b3JlR2V0Q29udGFpbmVyQ291bnQgICAgICAgICAgICAgICAgICAgICAgICAg4pyXIOS4jeWcqApfYmFkZ2VDb3VudFN0b3JlU2V0Q29udGFpbmVyQ291bnQgICAgICAgICAgICAgICAgICAgICAgICAg4pyXIOS4jeWcqApfc2V0RXhpc3RpbmdCYWRnZUNvdW50Rm9yQXBwbGljYXRpb24gICAgICAgICAgICAgICAgICAgICAg4pyXIOS4jeWcqApfcXVldWVfc2F2ZU5vdGlmaWNhdGlvblJlY29yZEhvb2sgICAgICAgICAgICAgICAgICAgICAgICAg4pyTIOWcqO+8iOWvueeFp+e7hO+8iQpgYGAKCuWug+S7rOiZveeEtuWHuueOsOWcqCBzeW10YWLvvIhgTl9TRUNUIHwgTl9FWFRg77yJ77yM5L2GIGR5bGQg5Y+q5oqKIGV4cG9ydCB0cmllIOmHjOeahOespuWPt+aatOmcsue7mQpgZGxzeW1gIOKGkiBgZGxzeW1gIOWFqOmDqOi/lOWbniBOVUxMIOKGkiAqKuS4ieS4qiBob29rIOS4gOS4qumDveayoeaMguS4iioq44CCCgo+IOaVmeiure+8muS6pOS7mOmqjOivgeS4jeiDveWPquajgOafpeOAjOaIkeeahCBkeWxpYiDph4zmnInmsqHmnInnvJbov5vov5nkuKrnrKblj7flkI3jgI3vvIjpgqPlj6rmmK8gZGxzeW0g55qECj4gKirlj4LmlbAqKu+8ie+8jOW/hemhu+agoemqjCoq55uu5qCHIGR5bGliIOaYr+WQpuWvvOWHuuivpeespuWPtyoq44CCdjAuMyDnmoTpqozor4Hpk77lsLHmlq3lnKjov5nph4zjgIIKCiMjIOWOn+eQhu+8iENyYW5lU0IuZHlsaWIgMS4zLjE3IOWPjeaxh+e8luWunuivge+8iQoKQ3JhbmVTQiDph4zop5LmoIfmnIkqKuS4pOadoeeLrOeri+eahOaVsOaNrui3r+W+hCoq77yaCgp8IOaYvuekuuS9jee9riB8IOivu+WPluWHveaVsCB8IOivreS5iSB8CnwgLS0tIHwgLS0tIHwgLS0tIHwKfCDlm77moIfop5LmoIcgfCBgX2JhZGdlQ291bnRTdG9yZUdldEFwcENvdW50KGFwcElELCAxKWAgfCDpgY3ljoblrrnlmagqKuaxguWSjCoq77yIYXBwIOe6p+axh+aAu++8iSB8Cnwg5b+r5o236I+c5Y2VIHwgYF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudChhcHBJRCwgY29udGFpbmVySUQsIDEpYCB8ICoq5q+P5Liq5a655Zmo5Y2V54us5pi+56S6KiogfAoK5b+r5o236I+c5Y2V55qE6LCD55So54K556Gu6K6k5ZyoIGBfY3JhbmVfcmVwbGFjZW1lbnRNZW51YCBAIGAweGY3OThg77yaCgpgYGAKMHhmYjc0OiBibCAgX3Nob3dDb250YWluZXJOb3RpZmljYXRpb25CYWRnZXNFbmFibGVkCjB4ZmI3ODogY2J6IHcwLCAuLi4gICAgICAgICAgICAgICAgIDsg5byA5YWz5pyq5byA5YiZ5LiN5pi+56S6CjB4ZmI3YzogbW92IHgwLCB4MjggICAgICAgICAgICAgICAgIDsgYXBwSUQKMHhmYjgwOiBtb3YgeDEsIHgyMyAgICAgICAgICAgICAgICAgOyBjb250YWluZXJJRAoweGZiODQ6IG1vdiB3MiwgIzEKMHhmYjg4OiBibCAgX2JhZGdlQ291bnRTdG9yZUdldENvbnRhaW5lckNvdW50CjB4ZmI4YzogY21wIHcwLCAjMQoweGZiOTA6IGIubHQgLi4uICAgICAgICAgICAgICAgICAgICA7IDwgMSDliJnkuI3nlLvop5LmoIcKYGBgCgojIyMg5Li65LuA5LmIIHYwLjIg5L+u5LiN5o6J5b+r5o236I+c5Y2VCgrlvq7kv6HmuIXop5LmoIfotbAgYC1zZXRCYWRnZU51bWJlcjpmb3JCdW5kbGVJZGVudGlmaWVyOndpdGhDb21wbGV0aW9uSGFuZGxlcjpg77yMCuiiqyBDcmFuZSDnmoQgYF9wcml2U2V0QmFkZ2VOdW1iZXJIb29rYCBAIGAweDdjNWNgIOaLpuaIquOAguWug+WGhemDqOacieWIhuaUr++8mgoKLSDmi7/liLAgY29udGFpbmVySUQg4oaSIOiwgyBgX2JhZGdlQ291bnRTdG9yZVNldENvbnRhaW5lckNvdW50KGFwcElELCBjb250YWluZXJJRCwgbilgIOabtOaWsOWuueWZqOe8k+WtmAotICoq5ou/5LiN5YiwIGNvbnRhaW5lcklE77yI5oiW5YmN572u5Yik5pat5LiN5oiQ56uL77yJ4oaSIOi1sCBgMHg3ZGIwYOOAjOebtOaOpemAj+S8oOOAjeWIhuaUryoq77yMCiAg55So5Y6f5aeLIGJhZGdlTnVtYmVyIOebtOaOpeiwgyBvcmlnCgrnrKzkuoznp43mg4XlhrXph4zvvIwqKuezu+e7n+inkuagh+iiq+e9riAw77yI5omA5Lul5Zu+5qCH6KeS5qCH5raI5aSx5LqG77yJ77yM5L2GIENyYW5lIOeahCBwZXItY29udGFpbmVyCue8k+WtmOWujOWFqOayoeiiq+WKqOi/hyoqIOKGkiDlv6vmjbfoj5zljZXnu6fnu63mmL7npLrljoblj7LlgLzjgIJ2MC4yIOWPqiBob29rIOS6hgpgU2V0Q29udGFpbmVyQ291bnRg77yM5Zyo6L+Z5Liq5YiG5pSv5LiL5Y6L5qC55LiN5Lya6KKr6Kem5Y+R77yM5omA5Lul5rK75LiN5LqG5b+r5o236I+c5Y2V44CCCgojIyMgdjAuNCDnrZbnlaXvvJpzbGlkZSArIHZtYWRkciDnm7TmjqXlr7nlnLDlnYDkuIvpkqkKCuaXoueEtiBgZGxzeW1gIOS4jeWPr+eUqO+8jOWwseaUueeUqCoq6L+Q6KGM5pe25Zyw5Z2AKirlrprkvY3vvJoKCi0gQ3JhbmVTQiDkuKTkuKrliIbniYfnmoQgYF9fVEVYVCB2bWFkZHJgIOmDveaYryBgMHgwYO+8jHN5bXRhYiDph4znmoQgYG5fdmFsdWVgIOWNsyB2bWFkZHIKLSDmlYUgKirov5DooYzml7blnLDlnYAgPSBzbGlkZSArIHZtYWRkcioqCi0gYHNsaWRlYCDihpAgYF9keWxkX2dldF9pbWFnZV92bWFkZHJfc2xpZGUoaW5kZXgpYAotIOWIhueJh+mAieaLqe+8mmBtaC0+Y3B1c3VidHlwZSA9PSAweDgwMDAwMDAyYO+8iGBDUFVfU1VCVFlQRV9BUk02NEVg77yJ4oaSIGFybTY0ZSDooajvvIzlkKbliJkgYXJtNjQg6KGoCgp8IOWHveaVsCB8IGFybTY0ZSDlgY/np7sgfCBhcm02NCDlgY/np7sgfAp8IC0tLSB8IC0tLSB8IC0tLSB8CnwgYF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudGAgfCBgMHg2YWNjYCB8IGAweDY3MzRgIHwKfCBgX2JhZGdlQ291bnRTdG9yZVNldENvbnRhaW5lckNvdW50YCB8IGAweDZmNTRgIHwgYDB4NmIzNGAgfAp8IGBfYmFkZ2VDb3VudFN0b3JlR2V0QXBwQ291bnRgIHwgYDB4NmM0Y2AgfCBgMHg2ODljYCB8CnwgYF9zZXRFeGlzdGluZ0JhZGdlQ291bnRGb3JBcHBsaWNhdGlvbmAgfCBgMHg2OWY4YCB8IGAweDY1OTBgIHwKfCBgX3ByaXZTZXRCYWRnZU51bWJlckhvb2tgIHwgYDB4N2M1Y2AgfCBgMHg3Nzc0YCB8Cgpob29rIOmAu+i+ke+8mgoKMS4gYF9wcml2U2V0QmFkZ2VOdW1iZXJIb29rYCDigJTigJQg5o2V6I6344CM6KeS5qCH6KKr6K6+5Li6IDDjgI3kv6Hlj7fvvIjlvq7kv6HmuIXop5LmoIflhaXlj6PvvInjgIIKICAg5Y+W5YC85ZCO5YWIIGBwdXJnZV9jb250YWluZXJzKClgIOecn+ato+aKiuivpSBhcHAg5omA5pyJ5bey55+l5a655Zmo6K6h5pWw57uPIG9yaWcg5YaZIDAKICAg77yIKirov5nkuIDmraXmiY3orqkgQmFkZ2VTdG9yZS5wbGlzdCDnnJ/mraPlubLlh4AqKu+8jOaYr+aMgeS5heWMlueahOWFs+mUru+8ie+8jAogICDlho3miZPmuIXpm7bmoIforrDlhZzlupXmnKrorrDlvZXliLDnmoTlrrnlmajjgIIKMi4gYF9iYWRnZUNvdW50U3RvcmVHZXRDb250YWluZXJDb3VudGAg4oCU4oCUIHBlci1jb250YWluZXIg6K+75Y+W5Ye65Y+j77yI5b+r5o236I+c5Y2VICsgR2V0QXBwQ291bnQg5rGC5ZKM77yJ44CCCiAgIOW3sua4hembtiBhcHAg5oiW5riF6Zu25qih5byP5LiL6L+U5ZueIDDjgIIKMy4gYF9iYWRnZUNvdW50U3RvcmVHZXRBcHBDb3VudGAg4oCU4oCUIGFwcCDnuqfor7vlj5blh7rlj6PvvIjlm77moIfop5LmoIfvvInvvIzlkIzmoLflvZLpm7bjgIIKNC4gYF9iYWRnZUNvdW50U3RvcmVTZXRDb250YWluZXJDb3VudGAg4oCU4oCUIOWGmeWFpeWHuuWPo+OAgmBjb3VudCA+IDBgIOaXtuaSpOmUgOa4hembtuagh+iusO+8iOaWsOa2iOaBr+aBouWkjeaYvuekuu+8ie+8mwogICBgY291bnQgPT0gMGAg5pe25omT5riF6Zu25qCH6K6w5bm25oqKIGFwcCDnuqfkuZ/lhpkgMOOAggoK5q+P5LiqIGhvb2sg5omT5a6M6YO95Lya5qOA5p+lIGBvcmlnICE9IE5VTExgIOW5tuaJk+aXpeW/l++8m+iLpeWcsOWdgOS4i+mSqeWksei0pe+8iGBvcmlnYCDku43kuLogTlVMTO+8iQroh6rliqjpgIDlm54gYGRsc3ltYO+8jOS4pOadoei3r+mDveWksei0peS8muaJk+WNsCBgKioqIOebruagh+WHveaVsOaXoOazleWumuS9jSAqKipgIOaYjuehruaKpeitpuOAggoKIyMjIOWQr+WKqOa4hembtuaooeW8j++8muiuqea4hembtue7k+aenOaMgeS5heWMlgoK55So5oi35a6e5rWL5Y+N6aaI77ya44CM6YeN5ZCvIHNwcmluZ2JvYXJkIOWQju+8jOinkuagh+eahOe6oueCueWPiOWbnuadpeOAjeOAguWOn+WboOaYryB2MC4zIOeahCBgcG9zdGluc3RgCuWIoOS6hiBgQmFkZ2VTdG9yZS5wbGlzdGAg5Y205rKh6YeN5ZCvIFNwcmluZ0JvYXJk77yM6L+Q6KGM5Lit55qEIENyYW5lIOWcqOmAgOWHuuaXtuaKiuWGheWtmOmHjOeahOaXp+iuoeaVsArlj4jlhpnlm57kuoYgcGxpc3TjgIIKCnYwLjQg55qE5aSE55CG77yaCgotIGBwb3N0aW5zdGAgKirliKDmjokgYGtpbGxhbGwgLTkgU3ByaW5nQm9hcmRgKirvvIjov5nlsLHmmK/jgIzlronoo4XlrozmiYvmnLrlsLHoh6rliqjph43lkK/jgI3nmoTmnaXmupDvvInvvIwKICDlj6rkv53nlZnliKAgcGxpc3TjgIIKLSDooaXkuIHliqDovb3lkI7ov5vlhaUgKioxMiDnp5LlkK/liqjmuIXpm7bmqKHlvI8qKu+8muacn+mXtAogIC0g5q+PIDIg56eS5oqKIGBCYWRnZVN0b3JlLnBsaXN0YCDph4zmiYDmnInmlbDlrZfpgJLlvZLmuIXpm7blubbljp/lrZDlhpnlm57vvJsKICAtIGBTZXRDb250YWluZXJDb3VudGAg5pS25Yiw55qE6Z2e6Zu2IGNvdW50IOS4gOW+i+WOi+aIkCAw77yI57uPIG9yaWcg5Zue5YaZ77yMcGxpc3Qg6ZqP5LmL5bmy5YeA77yJ77ybCiAgLSDor7vlj5blh7rlj6PkuIDlvovov5Tlm54gMOOAggotIDEyIOenkuWQjuiHquWKqOaBouWkjeato+W4uOiuoeaVsOaYvuekuu+8jOS4jeW9seWTjeS5i+WQjueahOaWsOa2iOaBr+OAggoKPiDlm6DmraTvvJoqKuijheWujOihpeS4gemcgOimgeaJi+WKqOmHjeWQr+S4gOasoSBTcHJpbmdCb2FyZO+8iOaIluWFs+acuumHjeWQr++8ieaJjeS8mueUn+aViCoq4oCU4oCUCj4g6L+Z5Lmf5piv5Y675o6J6Ieq5YqoIGtpbGxhbGwg5LmL5ZCO55qE5b+F54S25Luj5Lu344CCQ3JhbmUg55qEIHBlci1jb250YWluZXIg6KeS5qCH6KKr5riF55CG5ZCO77yMCj4g5LmL5ZCO5LiN5YaN5aSN5rS744CCCgrooaXkuIEqKuS4jeaUuSBDcmFuZSDkuozov5vliLYqKu+8jOeLrOeriyBkeWxpYiDov5DooYzml7bop6PmnpAgc3Vic3RyYXRlIOeahCBgTVNIb29rRnVuY3Rpb25g44CCCgo+IOazqO+8mui/meS6m+WvvOWHuiBDIOWHveaVsOeahOesrOS4gOS4quWPguaVsOaYryAqKmFwcElEKirvvIhidW5kbGUgaWTvvInvvIzkuI3mmK8gYHNlbGZg4oCU4oCUCj4g5pep5pyf54mI5pys6K+v5b2T5oiQIHNlbGbvvIzlt7LlnKggdjAuMyDkv67mraPjgIIKCiMjIyDpgIblkJHmlrnms5XorrrlpIflv5jvvIjpgb/lhY3kuIvmrKHlho3ouKnvvIkKCkNyYW5lU0Ig55qEICoqYXJtNjQg5YiG54mH5Lmf5L2/55SoIGBMQ19EWUxEX0NIQUlORURfRklYVVBTYO+8jGBwdHJfZm9ybWF0ID0gNmAK77yIYERZTERfQ0hBSU5FRF9QVFJfNjRfT0ZGU0VUYO+8iSoq77yM5LiN5piv57uP5YW4IHJlYmFzZeOAguaJgOS7pe+8mgoKLSBPYmpDIOWFg+aVsOaNru+8iGNsYXNzbGlzdCAvIGNsYXNzX3JvX3QgLyBtZXRob2RfdCAvIHNlbHJlZnPvvInph4znmoTmjIfpkogqKuS4jeaYr+ijuOaMh+mSiCoq77yMCiAg5oyJIGBCQVNFICsgdm1hZGRyYCDop6PmnpDkvJrlhajpg6jlpLHotKXvvIhzZWwg5Y+N5p+l5Li656m644CB6K+75Ye6IGAweDQwMDAwMDAwMDFjZTU4YCDkuYvnsbvmgKrlgLzvvInjgIIKLSDor5Xov4cgQkFTRSA9IGAweDEwMDAwMDAwMGAgLyBgMHgxMDAwMDAwMDAwMDAwYCAvIGAweDEwMDAwMDAwMDAwMDAwYCDlhajpg6jml6DmlYjigJTigJQKICDmlrnlkJHmgKfplJnor6/vvIzpl67popjkuI3lnKjln7rlnYDogIzlnKjnvJbnoIHmoLzlvI/jgIIKLSAqKuWPr+ihjOe7leihjCoq77ya5pS+5byD6Kej5p6QIE9iakMg57uT5p6E77yM5pS55LuOIHN5bXRhYiDlj43msYfnvJYqKuWvvOWHuiBDIOWHveaVsCoq77yI5Zyw5Z2A5piO56Gu77yMCiAg5LiN6ZyA6KaB6KejIGNoYWluZWQgZml4dXDvvInjgILmnKzooaXkuIHljbPotbDmraTot6/nur/jgIIKCiMjIOaehOW7ugoKKirkuI3kvp3otZYgdGhlb3MqKu+8jOS4juaKlumfs+aPkuS7tuWQjOasvuebtOe8luaWueahiO+8iGB4Y3J1biBjbGFuZ2AgKyBgY29kZXNpZ25g77yJ77yMCumbtiBTREsg5LiL6L2944CB6Zu2IGZsYWtpbmVzc+OAgkdpdEh1YiBBY3Rpb25zIOS4gOmUruaehOW7uu+8jOS6p+eJqeS4uiBgb3V0LyouZGViYOOAggoKKirmnrbmnoQgPSDnuq8gYXJtNjRl77yIUm9vdEhpZGXvvIkqKu+8muazqOWFpeebruaghyBTcHJpbmdCb2FyZCAvIHJ1bm5pbmdib2FyZGQg5pivIEExMisg6K6+5aSH55qECmFybTY0ZSDns7vnu5/ov5vnqIvvvIxkeWxkIOaMiSBjcHVzdWJ0eXBlIOeyvuehruWMuemFje+8jOe6ryBhcm02NCBkeWxpYiDkvJrpnZnpu5jmi5Lnu53liqDovb3jgIIKY29udHJvbCDnmoQgYEFyY2hpdGVjdHVyZTogaXBob25lb3MtYXJtNjRlYCDkuI7lj4LogIPooaXkuIEgYGNyYW5lcGtkc2VydmVyZml4YCDlrozlhajkuIDoh7QK77yIUm9vdEhpZGUg54mIIFNpbGVvIOaNruatpOivhuWIqyByb290aGlkZSDnlJ/mgIHjgIHkuI3lho3lvLnjgIxOb3QgVXBkYXRlZOOAje+8ieOAggoKIyMg5a6J6KOFCgoxLiDoo4UgZGVi77yI6ISa5pys5Lya5Yig6Zmk5Z2P57yT5a2Y5bm26YeN5ZCvIFNwcmluZ0JvYXJk77yJCjIuIOehruiupOazqOWFpei/m+eoi++8mlNwcmluZ0JvYXJkICsgcnVubmluZ2JvYXJkZO+8iOS4jiBDcmFuZVNCIOacrOS9k+S4gOiHtO+8iQozLiDmlLbmlrDmtojmga8g4oaSIOivu+aOiSDihpIg6KeC5a+f5Zu+5qCH6KeS5qCHKirkuI4qKuW/q+aNt+iPnOWNleaYr+WQpuS4gOi1t+W9kumbtgoKIyMg56ym5Y+36KGo77yIQ3JhbmVTQi5keWxpYiAxLjMuMTfvvIkKCmFybTY0ZSDliIbniYfvvIjlrp7pmYXnlJ/mlYjvvInvvJoKCnwg56ym5Y+3IHwg5Zyw5Z2AIHwg562+5ZCNIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IGBfZXhpc3RpbmdCYWRnZUNvdW50Rm9yQXBwbGljYXRpb25gIHwgMHg2OTEwIHwgYChpZCBhcHBJRCkgLT4gTlNVSW50ZWdlcmAgfAp8IGBfc2V0RXhpc3RpbmdCYWRnZUNvdW50Rm9yQXBwbGljYXRpb25gIHwgMHg2OWY4IHwgYChpZCBhcHBJRCwgTlNVSW50ZWdlciBjb3VudClgIHwKfCBgX2JhZGdlQ291bnRTdG9yZUdldENvbnRhaW5lckNvdW50YCB8IDB4NmFjYyB8IGAoaWQgYXBwSUQsIGlkIGNvbnRhaW5lcklELCBCT09MKSAtPiBOU1VJbnRlZ2VyYCB8CnwgYF9iYWRnZUNvdW50U3RvcmVHZXRBcHBDb3VudGAgfCAweDZjNGMgfCBgKGlkIGFwcElELCBCT09MKSAtPiBOU1VJbnRlZ2VyYCB8CnwgYF9iYWRnZUNvdW50U3RvcmVVcGRhdGVCYWRnZWAgfCAweDZlOTQgfCBgKGlkIGFwcElELCBCT09MKWAgfAp8IGBfYmFkZ2VDb3VudFN0b3JlU2V0QXBwRGljdGAgfCAweDZlZTQgfCBgKGlkIGFwcElELCBpZCBkaWN0KWAgfAp8IGBfYmFkZ2VDb3VudFN0b3JlU2V0Q29udGFpbmVyQ291bnRgIHwgMHg2ZjU0IHwgYChpZCBhcHBJRCwgaWQgY29udGFpbmVySUQsIE5TVUludGVnZXIgY291bnQpYCB8CnwgYF9iYWRnZUNvdW50U3RvcmVfaW5pdGAgfCAweDcwNTggfCBgKHZvaWQpYCB8CnwgYF9wcml2U2V0QmFkZ2VOdW1iZXJIb29rYCB8IDB4N2M1YyB8IGAoaWQgc2VsZiwgU0VMLCBpZCBiYWRnZU51bSwgaWQgYnVuZGxlSUQsIGlkIGNvbXBsZXRpb24pYCB8Cgphcm02NCDliIbniYfvvIjku4XkvZzlr7nnhafvvIzorr7lpIfkuIrkuI3liqDovb3vvInvvJoweDY1OTAgLyAweDY2NzQgLyAweDY3MzQgLyAweDY4OWMgLyAweDZhOWMgLyAweDZiMzQgLyAweDc3NzTjgIIKCiMjIOaOkumUmQoKLSDoo4XkuI3kuIrjgIxOb3QgVXBkYXRlZCDigKYgZm9yIHJvb3RoaWRl44CN4oaSIGNvbnRyb2wg55qEIGBBcmNoaXRlY3R1cmVgIOW/hemhu+aYryBgaXBob25lb3MtYXJtNjRlYAotIGBkcGtnOiBtaXNzaW5nIGZpbmFsIG5ld2xpbmVgIOKGkiBjb250cm9sIOacq+ihjOW/hemhu+acieaNouihjO+8iOaJk+WMheWZqOW3suWBmiBgcnN0cmlwICsgJ1xuJ2Ag6Ziy5b6h77yJCi0g5a6M5YWo5rKh5pWI5p6cIOKGkiDlhYjnnIvml6Xlv5fvvJpgW0NyYW5lQmFkZ2VGaXhdIHYwLjMg5Yid5aeL5YyW5a6M5oiQIGdldENvbnRhaW5lcj0xIHNldENvbnRhaW5lcj0xIHByaXZTZXRCYWRnZT0xYO+8jAogIOS4ieS4qiBob29rIOmDveW6lOS4uiAx77yb6IulIGBwcml2U2V0QmFkZ2U9MGAg6K+05piOIENyYW5lIOeJiOacrOespuWPt+WQjeacieWPmAo=
+# CraneBadgeFix
+
+修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、但快捷菜单仍残留 per-container 未读数」的独立补丁 tweak。
+
+## ⚠️ v0.3 失效复盘（重要，避免重蹈）
+
+v0.3 用 `dlsym(CraneSB, "_badgeCountStoreGetContainerCount")` 这类按名解析。
+实测装到手机上**完全没效果**——原因不是逻辑错，是**符号取不到**：
+
+解析 CraneSB.dylib 的 `LC_DYLD_EXPORTS_TRIE` 后确认，下列符号**全都不在导出表里**：
+
+```
+_privSetBadgeNumberHook                                   ✗ 不在 export trie
+_badgeCountStoreGetContainerCount                         ✗ 不在
+_badgeCountStoreSetContainerCount                         ✗ 不在
+_setExistingBadgeCountForApplication                      ✗ 不在
+_queue_saveNotificationRecordHook                         ✓ 在（对照组）
+```
+
+它们虽然出现在 symtab（`N_SECT | N_EXT`），但 dyld 只把 export trie 里的符号暴露给
+`dlsym` → `dlsym` 全部返回 NULL → **三个 hook 一个都没挂上**。
+
+> 教训：交付验证不能只检查「我的 dylib 里有没有编进这个符号名」（那只是 dlsym 的
+> **参数**），必须校验**目标 dylib 是否导出该符号**。v0.3 的验证链就断在这里。
+
+## 原理（CraneSB.dylib 1.3.17 反汇编实证）
+
+CraneSB 里角标有**两条独立的数据路径**：
+
+| 显示位置 | 读取函数 | 语义 |
+| --- | --- | --- |
+| 图标角标 | `_badgeCountStoreGetAppCount(appID, 1)` | 遍历容器**求和**（app 级汇总） |
+| 快捷菜单 | `_badgeCountStoreGetContainerCount(appID, containerID, 1)` | **每个容器单独显示** |
+
+快捷菜单的调用点确认在 `_crane_replacementMenu` @ `0xf798`：
+
+```
+0xfb74: bl  _showContainerNotificationBadgesEnabled
+0xfb78: cbz w0, ...                 ; 开关未开则不显示
+0xfb7c: mov x0, x28                 ; appID
+0xfb80: mov x1, x23                 ; containerID
+0xfb84: mov w2, #1
+0xfb88: bl  _badgeCountStoreGetContainerCount
+0xfb8c: cmp w0, #1
+0xfb90: b.lt ...                    ; < 1 则不画角标
+```
+
+### 为什么 v0.2 修不掉快捷菜单
+
+微信清角标走 `-setBadgeNumber:forBundleIdentifier:withCompletionHandler:`，
+被 Crane 的 `_privSetBadgeNumberHook` @ `0x7c5c` 拦截。它内部有分支：
+
+- 拿到 containerID → 调 `_badgeCountStoreSetContainerCount(appID, containerID, n)` 更新容器缓存
+- **拿不到 containerID（或前置判断不成立）→ 走 `0x7db0`「直接透传」分支**，
+  用原始 badgeNumber 直接调 orig
+
+第二种情况里，**系统角标被置 0（所以图标角标消失了），但 Crane 的 per-container
+缓存完全没被动过** → 快捷菜单继续显示历史值。v0.2 只 hook 了
+`SetContainerCount`，在这个分支下压根不会被触发，所以治不了快捷菜单。
+
+### v0.4 策略：slide + vmaddr 直接对地址下钩
+
+既然 `dlsym` 不可用，就改用**运行时地址**定位：
+
+- CraneSB 两个分片的 `__TEXT vmaddr` 都是 `0x0`，symtab 里的 `n_value` 即 vmaddr
+- 故 **运行时地址 = slide + vmaddr**
+- `slide` ← `_dyld_get_image_vmaddr_slide(index)`
+- 分片选择：`mh->cpusubtype == 0x80000002`（`CPU_SUBTYPE_ARM64E`）→ arm64e 表，否则 arm64 表
+
+| 函数 | arm64e 偏移 | arm64 偏移 |
+| --- | --- | --- |
+| `_badgeCountStoreGetContainerCount` | `0x6acc` | `0x6734` |
+| `_badgeCountStoreSetContainerCount` | `0x6f54` | `0x6b34` |
+| `_badgeCountStoreGetAppCount` | `0x6c4c` | `0x689c` |
+| `_setExistingBadgeCountForApplication` | `0x69f8` | `0x6590` |
+| `_privSetBadgeNumberHook` | `0x7c5c` | `0x7774` |
+
+hook 逻辑：
+
+1. `_privSetBadgeNumberHook` —— 捕获「角标被设为 0」信号（微信清角标入口）。
+   取值后先 `purge_containers()` 真正把该 app 所有已知容器计数经 orig 写 0
+   （**这一步才让 BadgeStore.plist 真正干净**，是持久化的关键），
+   再打清零标记兜底未记录到的容器。
+2. `_badgeCountStoreGetContainerCount` —— per-container 读取出口（快捷菜单 + GetAppCount 求和）。
+   已清零 app 或清零模式下返回 0。
+3. `_badgeCountStoreGetAppCount` —— app 级读取出口（图标角标），同样归零。
+4. `_badgeCountStoreSetContainerCount` —— 写入出口。`count > 0` 时撤销清零标记（新消息恢复显示）；
+   `count == 0` 时打清零标记并把 app 级也写 0。
+
+每个 hook 打完都会检查 `orig != NULL` 并打日志；若地址下钩失败（`orig` 仍为 NULL）
+自动退回 `dlsym`，两条路都失败会打印 `*** 目标函数无法定位 ***` 明确报警。
+
+### 启动清零模式：让清零结果持久化
+
+用户实测反馈：「重启 springboard 后，角标的红点又回来」。原因是 v0.3 的 `postinst`
+删了 `BadgeStore.plist` 却没重启 SpringBoard，运行中的 Crane 在退出时把内存里的旧计数
+又写回了 plist。
+
+v0.4 的处理：
+
+- `postinst` **删掉 `killall -9 SpringBoard`**（这就是「安装完手机就自动重启」的来源），
+  只保留删 plist。
+- 补丁加载后进入 **12 秒启动清零模式**：期间
+  - 每 2 秒把 `BadgeStore.plist` 里所有数字递归清零并原子写回；
+  - `SetContainerCount` 收到的非零 count 一律压成 0（经 orig 回写，plist 随之干净）；
+  - 读取出口一律返回 0。
+- 12 秒后自动恢复正常计数显示，不影响之后的新消息。
+
+> 因此：**装完补丁需要手动重启一次 SpringBoard（或关机重启）才会生效**——
+> 这也是去掉自动 killall 之后的必然代价。Crane 的 per-container 角标被清理后，
+> 之后不再复活。
+
+补丁**不改 Crane 二进制**，独立 dylib 运行时解析 substrate 的 `MSHookFunction`。
+
+> 注：这些导出 C 函数的第一个参数是 **appID**（bundle id），不是 `self`——
+> 早期版本误当成 self，已在 v0.3 修正。
+
+### 逆向方法论备忘（避免下次再踩）
+
+CraneSB 的 **arm64 分片也使用 `LC_DYLD_CHAINED_FIXUPS`，`ptr_format = 6`
+（`DYLD_CHAINED_PTR_64_OFFSET`）**，不是经典 rebase。所以：
+
+- ObjC 元数据（classlist / class_ro_t / method_t / selrefs）里的指针**不是裸指针**，
+  按 `BASE + vmaddr` 解析会全部失败（sel 反查为空、读出 `0x4000000001ce58` 之类怪值）。
+- 试过 BASE = `0x100000000` / `0x1000000000000` / `0x10000000000000` 全部无效——
+  方向性错误，问题不在基址而在编码格式。
+- **可行绕行**：放弃解析 ObjC 结构，改从 symtab 反汇编**导出 C 函数**（地址明确，
+  不需要解 chained fixup）。本补丁即走此路线。
+
+## 构建
+
+**不依赖 theos**，与抖音插件同款直编方案（`xcrun clang` + `codesign`），
+零 SDK 下载、零 flakiness。GitHub Actions 一键构建，产物为 `out/*.deb`。
+
+**架构 = 纯 arm64e（RootHide）**：注入目标 SpringBoard / runningboardd 是 A12+ 设备的
+arm64e 系统进程，dyld 按 cpusubtype 精确匹配，纯 arm64 dylib 会静默拒绝加载。
+control 的 `Architecture: iphoneos-arm64e` 与参考补丁 `cranepkdserverfix` 完全一致
+（RootHide 版 Sileo 据此识别 roothide 生态、不再弹「Not Updated」）。
+
+## 安装
+
+1. 装 deb（脚本会删除坏缓存并重启 SpringBoard）
+2. 确认注入进程：SpringBoard + runningboardd（与 CraneSB 本体一致）
+3. 收新消息 → 读掉 → 观察图标角标**与**快捷菜单是否一起归零
+
+## 符号表（CraneSB.dylib 1.3.17）
+
+arm64e 分片（实际生效）：
+
+| 符号 | 地址 | 签名 |
+| --- | --- | --- |
+| `_existingBadgeCountForApplication` | 0x6910 | `(id appID) -> NSUInteger` |
+| `_setExistingBadgeCountForApplication` | 0x69f8 | `(id appID, NSUInteger count)` |
+| `_badgeCountStoreGetContainerCount` | 0x6acc | `(id appID, id containerID, BOOL) -> NSUInteger` |
+| `_badgeCountStoreGetAppCount` | 0x6c4c | `(id appID, BOOL) -> NSUInteger` |
+| `_badgeCountStoreUpdateBadge` | 0x6e94 | `(id appID, BOOL)` |
+| `_badgeCountStoreSetAppDict` | 0x6ee4 | `(id appID, id dict)` |
+| `_badgeCountStoreSetContainerCount` | 0x6f54 | `(id appID, id containerID, NSUInteger count)` |
+| `_badgeCountStore_init` | 0x7058 | `(void)` |
+| `_privSetBadgeNumberHook` | 0x7c5c | `(id self, SEL, id badgeNum, id bundleID, id completion)` |
+
+arm64 分片（仅作对照，设备上不加载）：0x6590 / 0x6674 / 0x6734 / 0x689c / 0x6a9c / 0x6b34 / 0x7774。
+
+## 排错
+
+- 装不上「Not Updated … for roothide」→ control 的 `Architecture` 必须是 `iphoneos-arm64e`
+- `dpkg: missing final newline` → control 末行必须有换行（打包器已做 `rstrip + '\n'` 防御）
+- 完全没效果 → 先看日志：`[CraneBadgeFix] v0.3 初始化完成 getContainer=1 setContainer=1 privSetBadge=1`，
+  三个 hook 都应为 1；若 `privSetBadge=0` 说明 Crane 版本符号名有变

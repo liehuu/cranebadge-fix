@@ -109,9 +109,12 @@ static NSString *g_logPath = nil;
 static dispatch_queue_t g_logQueue = nil;
 static NSDateFormatter *g_logFmt = nil;
 
-// ⚠️ 前置声明：badge_store_paths()（第 100 行附近）要用到 g_cranePath，
-//    而它的定义在「定位 CraneSB」段落（第 190 行附近）。
-//    C 语言要求「先声明后使用」，不在此处前置会编译失败。
+// ⚠️ 前置声明：C 语言要求「先声明后使用」。
+//   1) CBFLog：dump_crane_dirs_once()（下文）在其定义之前就要调用它。
+//   2) g_cranePath：badge_store_paths() 要用它，而它的定义在「定位 CraneSB」段落。
+//      缺少任一前置声明都会编译失败（implicit function declaration /
+//      static declaration follows non-static declaration）。
+static void CBFLog(NSString *fmt, ...);
 static const char *g_cranePath = NULL;
 
 // BadgeStore.plist 的候选路径。

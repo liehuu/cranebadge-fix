@@ -10,7 +10,7 @@ CraneBadgeFix deb 打包器（零依赖，Python 标准库）。
   control.tar.gz          含 ./control ./postinst（维护脚本）
   data.tar.gz             含实际安装文件
 """
-import io, os, sys, tarfile
+import io, os, sys, tarfile, plistlib
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT  = os.path.join(ROOT, "out", "com.82flex.cranebadgefix_0.2.0_iphoneos-arm64.deb")
@@ -73,10 +73,19 @@ def main():
         ("postinst", ("./postinst", open(POSTINST, "rb").read(), 0o755)),
     ])
 
-    # data.tar.gz：dylib + 过滤 plist
+    # plist 转 binary plist（Substrate 只认合法 plist；参考补丁同样是二进制）
+    with open(PLIST, "rb") as f:
+        plist_obj = plistlib.load(f)
+    plist_binary = plistlib.dumps(plist_obj, fmt=plistlib.FMT_BINARY)
+
+    # data.tar.gz：dylib(755) + 过滤 plist(binary)
     data_tar = tar_gz([
-        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib", DYLIB),
-        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.plist", PLIST),
+        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib",
+         ("./Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib",
+          open(DYLIB, "rb").read(), 0o755)),
+        ("Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.plist",
+         ("./Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.plist",
+          plist_binary, 0o644)),
     ])
 
     # ar 归档

@@ -1,0 +1,32 @@
+name: Build CraneBadgeFix
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup theos
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+
+      - name: Build tweak
+        run: make package
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: CraneBadgeFix-deb
+          path: packages/*.deb
+          if-no-files-found: error

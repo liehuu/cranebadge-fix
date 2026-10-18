@@ -742,11 +742,10 @@ static NSDictionary *load_badge_store(NSString *p) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{ lastSeen = [NSMutableDictionary dictionary]; });
 
-    NSString *key = p;
     NSString *sig = [NSString stringWithFormat:@"%d|%llu", exists ? 1 : 0, sz];
     pthread_mutex_lock(&g_lock);
-    NSString *prevSig = lastSeen[key];
-    [lastSeen[key] = sig];
+    NSString *prevSig = lastSeen[p];
+    [lastSeen setObject:sig forKey:p];
     pthread_mutex_unlock(&g_lock);
 
     if (!prevSig || ![prevSig isEqualToString:sig]) {
@@ -1202,7 +1201,7 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
         // ★ v0.9.2 降噪：快捷菜单每 7~15 秒轮询一次且值不变，
         //   会持续刷屏（实机日志末尾 5 行全是值=4 的重复读取）。
         //   改为只在「该容器的读数发生变化」时打印。
-        {
+        if (is_string(appID) && is_string(containerID)) {
             static NSMutableDictionary *lastRead = nil;
             static dispatch_once_t once;
             dispatch_once(&once, ^{ lastRead = [NSMutableDictionary dictionary]; });
@@ -1210,7 +1209,7 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
             NSString *v = [NSString stringWithFormat:@"%llu", cnt];
             pthread_mutex_lock(&g_lock);
             NSString *pv = lastRead[k];
-            [lastRead[k] = v];
+            [lastRead setObject:v forKey:k];
             pthread_mutex_unlock(&g_lock);
             // ⚠️ 值未变时只**跳打印**，绝不能 return ——
             //   提前 return 会跳过下面的压制逻辑（zeroMode / is_cleared），
@@ -1257,6 +1256,9 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
 static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
     unsigned long long cnt = orig_GetAppCount ? orig_GetAppCount(appID, flag) : 0;
     if (cnt == 0) return 0;
+    // ⚠️ setObject:forKey: 传 nil key 会抛异常。appID 理论上可能为 nil，
+    //   日志里 GetContainerCount 的 appID 一直是合法 bundle id，但不做防护等于赌。
+    if (!is_string(appID)) return cnt;
     {   // ★ v0.9.2 降噪：只在值变化时打印
         static NSMutableDictionary *lastApp = nil;
         static dispatch_once_t once;
@@ -1264,7 +1266,7 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
         NSString *v = [NSString stringWithFormat:@"%llu", cnt];
         pthread_mutex_lock(&g_lock);
         NSString *pv = lastApp[appID];
-        [lastApp[appID] = v];
+        [lastApp setObject:v forKey:appID];
         pthread_mutex_unlock(&g_lock);
         if (!pv || ![pv isEqualToString:v])
             CBFLog(@"[读] GetAppCount app=%@ → %llu", appID, cnt);

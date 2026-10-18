@@ -76,8 +76,13 @@ static NSDateFormatter *g_logFmt = nil;
 // "/var/mobile/Library/Crane/BadgeStore.plist"，**没有 /var/jb 前缀**）。
 // RootHide 下 /var/jb/var/mobile/... 虽也常可写，但必须两个都覆盖，
 // 否则会出现「补丁写了 A 路径，Crane 读 B 路径」的假清零。
-static NSString *badge_store_paths(void) {
-    static NSArray *paths = nil;
+// ⚠️ v0.8 修 v0.6 遗留的类型 bug：返回类型原写成 NSString *，实际返回 NSArray *
+//    （clang: warning: incompatible pointer types returning 'NSArray *' from
+//     a function with result type 'NSString *'）。返回类型与实际不符属未定义行为，
+//    调用方把它当数组用（for...in）却拿到非数组指针，是潜在崩溃点。
+//    连带修掉第二个 warning：for...in 直接遍历函数返回值时类型不确定。
+static NSArray<NSString *> *badge_store_paths(void) {
+    static NSArray<NSString *> *paths = nil;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         paths = @[
@@ -188,12 +193,18 @@ static BOOL image_looks_like_cranesb(const char *name) {
 }
 
 // 校验镜像确实含可执行代码（__TEXT），避免匹配到无代码的占位镜像
+// ⚠️ 注意：lc 必须转成 segment_command_64 才有 segname 字段，
+//    struct load_command 只有 cmd 与 cmdsize 两个通用成员。
 static BOOL image_has_text(const struct mach_header *mh) {
     if (!mh || mh->magic != MH_MAGIC_64) return NO;
     const struct load_command *lc = (const struct load_command *)(mh + 1);
     for (uint32_t i = 0; i < mh->ncmds; i++) {
-        if (lc->cmd == LC_SEGMENT_64 && strcmp(lc->segname, "__TEXT") == 0) return YES;
+        if (lc->cmd == LC_SEGMENT_64) {
+            const struct segment_command_64 *sg = (const struct segment_command_64 *)lc;
+            if (strcmp(sg->segname, "__TEXT") == 0) return YES;
+        }
         lc = (const struct load_command *)((const char *)lc + lc->cmdsize);
+        if (lc->cmdsize == 0) break;               // 防御：坏镜像，避免死循环
     }
     return NO;
 }
@@ -501,7 +512,11 @@ static void harvest_init_once(void) {
 
 static void harvest_from_plist(void) {
     harvest_init_once();
-    for (NSString *p in badge_store_paths()) {
+    // v0.8：先存到局部变量再遍历。for...in 直接写 badge_store_paths()
+    // 会让编译器报「collection expression type 'NSString *' may not respond to
+    // countByEnumeratingWithState:...」（类型来自旧的错误声明）。
+    NSArray<NSString *> *paths = badge_store_paths();
+    for (NSString *p in paths) {
         NSDictionary *d = load_badge_store(p);
         if (!d) continue;
         walk_plist(d, nil, nil);

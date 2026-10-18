@@ -68,8 +68,11 @@ def main():
     debian_binary = b"2.0\n"
 
     # control.tar.gz：./control + ./postinst（755）
+    # 防御：control 必须保证末尾有换行，否则 dpkg --unpack 报
+    #   "end of file during value of field 'XXX' (missing final newline)"。
+    control_raw = open(CONTROL, "rb").read().rstrip(b"\r\n") + b"\n"
     control_tar = tar_gz([
-        ("control", CONTROL),
+        ("control", ("control", control_raw, 0o644)),
         ("postinst", ("./postinst", open(POSTINST, "rb").read(), 0o755)),
     ])
 

@@ -1,8 +1,7 @@
-name: Build CraneBadgeFix
+name: build-dylib
 
 on:
   push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -10,46 +9,39 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
 
-      - name: Cache theos + SDKs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/theos
-            ~/theos/sdks
-          key: theos-sdk-${{ runner.os }}-v1
-
-      - name: Setup theos
+      - name: Build CraneBadgeFix dylib (arm64, 直编无 theos)
         run: |
-          export PATH="$HOME/theos/bin:$PATH"
-          if [ -f "$HOME/theos/bin/nic.pl" ] && [ -d "$HOME/theos/sdks" ] && [ "$(ls "$HOME/theos/sdks" | wc -l)" -gt 0 ]; then
-            echo "theos + SDK cached, skip install"
-          else
-            # 用重试包裹 install-theos，SDK 下载走 api.github.com 偶发失败
-            for i in 1 2 3; do
-              echo "install-theos attempt $i"
-              if bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"; then
-                break
-              fi
-              echo "retry in 10s..."
-              sleep 10
-            done
-          fi
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-          echo "PATH=$HOME/theos/bin:$PATH" >> "$GITHUB_ENV"
+          set -e
+          mkdir -p out
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "SDK: $SDK"
+          # 与抖音 DouYinKeepPlay 同款直编方案：不装 theos、不下载 SDK、
+          # 不依赖 api.github.com，零 flakiness。
+          # MSHookFunction / dlsym 运行时解析（substrate/ellekit），链接期放行未定义符号。
+          xcrun clang -target arm64-apple-ios13.0 -isysroot "$SDK" \
+            -dynamiclib -fobjc-arc -undefined dynamic_lookup \
+            -framework Foundation \
+            main.m -o out/CraneBadgeFix.dylib \
+            -Xlinker -install_name -Xlinker "@loader_path/.jbroot/Library/MobileSubstrate/DynamicLibraries/CraneBadgeFix.dylib"
+          # adhoc 代码签名：RootHide 加载器跳过无签名的 dylib
+          codesign --force --sign - out/CraneBadgeFix.dylib
+          echo "--- dylib ---"
+          file out/CraneBadgeFix.dylib
+          lipo -info out/CraneBadgeFix.dylib
 
-      - name: Build tweak
-        run: make package
+      - name: Package deb (标准库手写 ar + tar.gz)
+        run: |
+          set -e
+          python3 build_deb.py
+          echo "--- deb ---"
+          ls -la out/*.deb
 
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: CraneBadgeFix-deb
-          path: packages/*.deb
+          path: out/*.deb
           if-no-files-found: error

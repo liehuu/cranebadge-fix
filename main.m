@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.8.2（保守安全版）
+ * CraneBadgeFix v0.8.3（保守安全版）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -89,6 +89,33 @@
  * → v0.8.2：从 locate_crane() 拿到的**真实镜像路径动态推导** jbroot 前缀，
  *   生成候选路径；并新增一次性目录探测 dump_crane_dirs_once()，
  *   把候选目录的实际条目全打进日志。只列目录、纯只读、无副作用。
+ *
+ * ── v0.8.3：持久化清零已打通，本版专攻「快捷菜单」+ 补齐诊断盲区 ──────
+ * v0.8.2 实机结论（用户确认）：
+ *   - 图标角标清零：**正确**
+ *   - 重启后清零：**有效**（持久化打通）
+ *   - 快捷菜单：**仍然不行**（唯一未攻克项）
+ *
+ * 持久化打通的铁证 = BadgeStore.plist 大小变化（真实路径已确认）：
+ *   /private/var/containers/Bundle/Application/.jbroot-9AB6CCDA0F9265C2/var/mobile/Library/Crane/BadgeStore.plist
+ *   23:25:30 size=306 (count=5) → 23:25:36 size=350 (新消息写入)
+ *   → 23:25:39 size=277  ← 数字被清成 0，plist 变小 = purge 真的写进去了
+ *   23:27:14 size=350 (count=2) → 23:27:23 size=277 ← 再次清零成功
+ *
+ * ★ 关键诊断发现：v0.8.1/v0.8.2 实机日志里 **rep_SetContainerCount 一行都没有**，
+ *   即微信清角标的「写」动作完全没走这个 C 函数。
+ *   → 快捷菜单的残留在 v0.8.3 之前是**完全没被观测到**的，
+ *     自然也无从判断该 hook 哪里。这才是「快捷菜单修不掉」的真正原因：
+ *     不是 hook 错了，是**没看见数据从哪来**。
+ *
+ * v0.8.3 动作（全部只加诊断 + 修 bug，不新增任何高危操作）：
+ *   1. rep_SetContainerCount 每次调用打日志 —— 补写路径盲区
+ *   2. rep_GetContainerCount / rep_GetAppCount 有值时打日志 —— 确认读路径
+ *   3. rep_PrivSetBadge 区分「清零信号 v=0」与「非清零信号 v>0」，
+ *      并打出 purge 时的已知容器数 —— 验证清零信号是否真被捕获
+ *   4. 修 dump_crane_dirs_once 的 bug：
+ *      `[fm fileExistsAtPath:isDirectory:]` 返回的是「是否存在」而非 isDirectory 值，
+ *      导致所有条目误报 (dir)。改用 attributesOfItemAtPath 的 NSFileType 判断。
  *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
@@ -190,8 +217,16 @@ static void dump_crane_dirs_once(void) {
             CBFLog(@"[目录探测] %@ → %lu 个条目", d, (unsigned long)items.count);
             for (NSString *n in items) {
                 NSString *full = [d stringByAppendingPathComponent:n];
-                unsigned long long sz = [[fm attributesOfItemAtPath:full error:nil] fileSize];
-                BOOL isDir = [fm fileExistsAtPath:full isDirectory:NULL];
+                NSDictionary *attr = [fm attributesOfItemAtPath:full error:nil];
+                unsigned long long sz = [attr fileSize];
+                // ⚠️ v0.8.3 修 bug：v0.8.2 写的是
+                //    `BOOL isDir = [fm fileExistsAtPath:full isDirectory:NULL];`
+                //    —— 这个方法返回的是「文件是否存在」，不是 isDirectory 的值！
+                //    于是所有条目都被误报成 (dir)（实机日志里
+                //    「BadgeStore.plist (dir) 306 bytes」就是这么来的）。
+                //    正确做法：用属性字典的 NSFileType 判断。
+                NSString *type = attr[NSFileType];
+                BOOL isDir = [type isEqualToString:NSFileTypeDirectory];
                 CBFLog(@"[目录探测]    %@ %@ %llu bytes", n, isDir ? @"(dir)" : @"(file)", sz);
             }
         }
@@ -712,6 +747,13 @@ static void schedule_zero_mode(void) {
 static unsigned long long rep_GetContainerCount(id appID, id containerID, unsigned long long flag) {
     unsigned long long cnt = orig_GetContainerCount ? orig_GetContainerCount(appID, containerID, flag) : 0;
     remember_container(appID, containerID);
+    if (cnt > 0) {
+        // ★ v0.8.3 新增诊断：快捷菜单（_crane_replacementMenu @0xfb88 与
+        //   _initApplicationShortcutLateHooks_12Down @0x129e0）都调用本函数。
+        //   实机日志里「抑制容器角标」只在清零模式出现，说明平时 Crane
+        //   很少走这条读路径 —— 需要确认快捷菜单究竟读不读这里。
+        CBFLog(@"[读] GetContainerCount app=%@ cid=%@ → %llu", appID, containerID, cnt);
+    }
     if (cnt > 0 && (g_zeroMode || is_cleared(appID))) {
         CBFLog(@"抑制容器角标 %llu app=%@ cid=%@ zero=%d", cnt, appID, containerID, g_zeroMode);
         return 0;
@@ -721,6 +763,7 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
 
 static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
     unsigned long long cnt = orig_GetAppCount ? orig_GetAppCount(appID, flag) : 0;
+    if (cnt > 0) CBFLog(@"[读] GetAppCount app=%@ → %llu", appID, cnt);
     if (cnt > 0 && (g_zeroMode || is_cleared(appID))) {
         CBFLog(@"抑制 app 角标 %llu app=%@ zero=%d", cnt, appID, g_zeroMode);
         return 0;
@@ -738,6 +781,13 @@ static void rep_SetContainerCount(id appID, id containerID, unsigned long long c
     //   所以这里**不再**拦截写入，只保留标记更新 + 透传。
     if (count > 0) mark_cleared(appID, NO);
     else if (count == 0) mark_cleared(appID, YES);
+
+    // ★ v0.8.3 新增诊断：这是 Crane **写入** per-container 角标缓存的唯一入口。
+    // v0.8.1/v0.8.2 实机日志里这一行**一次都没出现**，说明微信清角标的写动作
+    // 完全没走这个 C 函数 —— 快捷菜单的红点残留必然来自别处。
+    // 必须把它打出来才能确定 Crane 内部到底用哪条路更新缓存。
+    CBFLog(@"[写] SetContainerCount app=%@ cid=%@ count=%llu", appID, containerID, count);
+
     if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
 }
 
@@ -746,13 +796,22 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
     if (badgeNumberObj && [badgeNumberObj respondsToSelector:@selector(longLongValue)])
         v = [badgeNumberObj longLongValue];
 
-    CBFLog(@"_privSetBadgeNumberHook 被调用 badgeNumber=%lld app=%@", v, bundleID);
-
+    // ★ v0.8.3 诊断细化：v 才是「用户点了已读」的真实信号。
+    // 实机日志里 v>0（未读 1~6）与 v==0（已读）都会走这里，
+    // 微信清角标时 Crane 走的是 0x7db0「直接透传」分支 —— 系统角标置 0，
+    // 但 Crane 的 per-container 缓存没动 → 快捷菜单仍显示历史值。
+    // 这里在 v==0 时把 purge 的实际结果打出来，确认是否真的写下去了。
     if (v == 0) {
+        NSUInteger before = 0;
+        pthread_mutex_lock(&g_lock);
+        before = [g_containers[bundleID] count];
+        pthread_mutex_unlock(&g_lock);
         purge_containers(bundleID);
+        CBFLog(@"★ 清零信号 v=0 app=%@ 已知容器=%lu", bundleID, (unsigned long)before);
         mark_cleared(bundleID, YES);
-    } else if (v > 0) {
-        mark_cleared(bundleID, NO);
+    } else {
+        CBFLog(@"  非清零信号 v=%lld app=%@", v, bundleID);
+        if (v > 0) mark_cleared(bundleID, NO);
     }
     if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
 }
@@ -816,7 +875,7 @@ static void install_hooks(void) {
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.8.2 加载（保守安全版，仅 C 函数层 hook）====");
+        CBFLog(@"==== CraneBadgeFix v0.8.3 加载（保守安全版，仅 C 函数层 hook）====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

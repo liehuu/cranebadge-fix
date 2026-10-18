@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.8（保守安全版）
+ * CraneBadgeFix v0.8.1（保守安全版）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -52,6 +52,26 @@
  * ── v0.5 修日志落盘（v0.5 前每次写日志都清空文件，只剩最后一行）。
  * ── v0.6 修「启动清零吞掉真实新消息」+ 递归式 plist 自适应解析。
  * ── v0.7 引入 ObjC 运行时操作 → 死机。v0.8 全部回退。
+ *
+ * ── v0.8.1 实机修正（v0.8 全程失效，见下）─────────────────────────
+ * v0.8 我把「镜像必须含 __TEXT 段」当成**过滤条件**，实机全部跳过：
+ *   跳过无 __TEXT 的镜像: .../.jbroot-9AB6CCDA0F9265C2/.../CraneSB.dylib
+ *   → 4 个 C hook 一个都没挂上，补丁完全无效。
+ * 原因：RootHide 会改写 dylib 的 header / load commands，dyld 返回的
+ *      mach_header 与标准预期不符，遍历 ncmds 找不到 __TEXT。
+ *      但这个镜像**就是正确的 CraneSB**（v0.4~v0.6 实机连续验证成功）。
+ * → 修正：__TEXT 检查**降级为纯诊断日志**，不再用于跳过镜像。
+ *   过滤条件只保留「路径以 .dylib 结尾」（能可靠排除资源 bundle）。
+ *
+ * 同时修两个连带缺陷：
+ *   1) 重试窗口过窄：v0.8 只排 5 次（0/0.5/1.5/3/6 秒）就永久放弃，
+ *      实机恰好全落空 → 补丁不自愈。v0.8.1 改为两阶段：
+ *      第一阶段密集（0~20 秒，8 次），第二阶段稀疏（30~300 秒，每 15 秒）。
+ *   2) **新增并发风险并已修**：两阶段各自 `if (g_inited) return; ... g_inited = YES;`
+ *      是非原子读-改-写，两个块同时命中会**双重进入 install_hooks()**
+ *      → 对同一函数调两次 MSHookFunction → 原实现被换成我们的实现
+ *      → 再换回来 → 无限递归 → 栈溢出崩溃。
+ *      现用 claim_init() 在互斥锁内原子完成「检查+置位」。
  *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
@@ -192,19 +212,30 @@ static BOOL image_looks_like_cranesb(const char *name) {
     return YES;
 }
 
-// 校验镜像确实含可执行代码（__TEXT），避免匹配到无代码的占位镜像
-// ⚠️ 注意：lc 必须转成 segment_command_64 才有 segname 字段，
-//    struct load_command 只有 cmd 与 cmdsize 两个通用成员。
+// ── ⛔ v0.8.1 修正：__TEXT 检查不能作为过滤条件 ──────────────────────
+// v0.8 我加了 image_has_text() 当过滤条件，结果**实机全部失效**：
+//   跳过无 __TEXT 的镜像: .../.jbroot-9AB6CCDA0F9265C2/.../CraneSB.dylib
+//   → 5 次重试全部失败，4 个 C hook 一个都没挂上。
+// 原因：RootHide 环境下 dyld 返回的 mach_header 与标准预期不符
+//      （RootHide 会改写 dylib 的 header / load commands 来重定向依赖），
+//      导致遍历 ncmds 找不到名为 __TEXT 的 segment。
+// 但这个镜像**就是正确的 CraneSB**（v0.4~v0.6 用最朴素的 strstr 匹配，
+// 实机连续验证成功挂上 4 个 hook）。
+//
+// → 决策：__TEXT 检查**降级为纯诊断日志**，不再用于跳过任何镜像。
+//   真正的过滤条件只保留「路径以 .dylib 结尾」这一条（它能可靠排除
+//   Crane 的资源 bundle，且不依赖 header 内容）。
 static BOOL image_has_text(const struct mach_header *mh) {
-    if (!mh || mh->magic != MH_MAGIC_64) return NO;
+    if (!mh) return NO;
+    if (mh->magic != MH_MAGIC_64) return NO;
     const struct load_command *lc = (const struct load_command *)(mh + 1);
     for (uint32_t i = 0; i < mh->ncmds; i++) {
+        if (lc->cmdsize == 0) break;               // 防御：坏 load command
         if (lc->cmd == LC_SEGMENT_64) {
             const struct segment_command_64 *sg = (const struct segment_command_64 *)lc;
             if (strcmp(sg->segname, "__TEXT") == 0) return YES;
         }
         lc = (const struct load_command *)((const char *)lc + lc->cmdsize);
-        if (lc->cmdsize == 0) break;               // 防御：坏镜像，避免死循环
     }
     return NO;
 }
@@ -220,11 +251,12 @@ static BOOL locate_crane(void) {
         if (!image_looks_like_cranesb(name)) continue;
 
         const struct mach_header *mh = _dyld_get_image_header(i);
-        if (!image_has_text(mh)) {
-            CBFLog(@"跳过无 __TEXT 的镜像: %s", name);
-            continue;
-        }
-        BOOL isE = ((mh->cpusubtype & 0x00FFFFFFu) == 2);   // CPU_SUBTYPE_ARM64E
+        // ⚠️ 仅诊断，不参与过滤（见上方说明）
+        BOOL hasText = image_has_text(mh);
+        CBFLog(@"候选镜像: %s  magic=0x%08x ncmds=%u __TEXT=%d",
+               name, mh ? mh->magic : 0, mh ? mh->ncmds : 0, hasText);
+
+        BOOL isE = mh ? ((mh->cpusubtype & 0x00FFFFFFu) == 2) : NO;
         if (!foundAny) {
             // 第一个合法候选先占位
             foundAny = YES;
@@ -270,6 +302,28 @@ static NSMutableDictionary *g_containers = nil;
 static pthread_mutex_t      g_lock = PTHREAD_MUTEX_INITIALIZER;
 static volatile BOOL        g_zeroMode = NO;
 static BOOL                 g_inited = NO;
+static pthread_mutex_t      g_initLock = PTHREAD_MUTEX_INITIALIZER;
+
+// v0.8.1：原子地「抢占」初始化权。
+// 缺陷背景：两阶段重试各自执行 `if (g_inited) return; ... g_inited = YES;`，
+// 这是非原子的读-改-写。两个 dispatch_after 块若恰好同时命中，
+// 就会**双双进入 install_hooks()**，对同一函数调用两次 MSHookFunction
+// → 原实现被替换成我们的实现 → 再替换回来 → 无限递归 → 栈溢出崩溃。
+// 现在用互斥锁把「检查 + 置位」合并成一个临界区，保证只有一方成功。
+static BOOL claim_init(void) {
+    pthread_mutex_lock(&g_initLock);
+    BOOL mine = (g_inited == NO);
+    if (mine) g_inited = YES;
+    pthread_mutex_unlock(&g_initLock);
+    return mine;
+}
+
+static BOOL is_inited(void) {
+    pthread_mutex_lock(&g_initLock);
+    BOOL v = g_inited;
+    pthread_mutex_unlock(&g_initLock);
+    return v;
+}
 
 static BOOL is_string(id o) { return o && [o isKindOfClass:[NSString class]]; }
 
@@ -669,7 +723,7 @@ static void install_hooks(void) {
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.8 加载（保守安全版，仅 C 函数层 hook）====");
+        CBFLog(@"==== CraneBadgeFix v0.8.1 加载（保守安全版，仅 C 函数层 hook）====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 
@@ -677,19 +731,43 @@ __attribute__((constructor)) static void CBFInit(void) {
         g_containers  = [[NSMutableDictionary alloc] init];
 
         dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
-        const double delays[] = { 0.0, 0.5, 1.5, 3.0, 6.0 };
-        size_t nDelays = sizeof(delays) / sizeof(delays[0]);
-        for (size_t i = 0; i < nDelays; i++) {
-            const double d = delays[i];
+
+        // v0.8.1：重试改为**两阶段**。
+        // 缺陷背景：v0.8 只排了 5 次（0/0.5/1.5/3/6 秒）就永久放弃，
+        // 实机恰好在这几次里都没匹配上 → 补丁全程无效且不会自愈。
+        // 设备负载高、或 CraneSB 注入稍晚时，7 秒窗口远远不够。
+        //
+        // 第一阶段：密集重试，覆盖前 20 秒（大多数情况在此命中）。
+        const double early[] = { 0.0, 0.5, 1.5, 3.0, 6.0, 10.0, 15.0, 20.0 };
+        size_t nEarly = sizeof(early) / sizeof(early[0]);
+        for (size_t i = 0; i < nEarly; i++) {
+            const double d = early[i];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(d * NSEC_PER_SEC)), q, ^{
-                if (g_inited) return;
+                if (is_inited()) return;                 // 别人已装好
                 if (!locate_crane()) {
-                    CBFLog(@"尚未找到 CraneSB，%.1fs 后重试", d + 1.0);
+                    CBFLog(@"尚未找到 CraneSB，%.1fs 处重试（第一阶段）", d);
                     return;
                 }
-                g_inited = YES;
+                if (!claim_init()) return;                // 竞态：别人抢先了
                 install_hooks();
                 schedule_zero_mode();
+            });
+        }
+
+        // 第二阶段：稀疏重试，持续到 5 分钟。每 15 秒一次。
+        // 这样即使 CraneSB 加载很晚，补丁最终也能挂上，无需重启手机。
+        for (int k = 0; k < 18; k++) {
+            const double d = 30.0 + k * 15.0;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(d * NSEC_PER_SEC)), q, ^{
+                if (is_inited()) return;
+                if (locate_crane()) {
+                    if (!claim_init()) return;            // 竞态：别人抢先了
+                    CBFLog(@"第二阶段终于找到 CraneSB（%.1fs），开始安装 hook", d);
+                    install_hooks();
+                    schedule_zero_mode();
+                } else {
+                    CBFLog(@"第二阶段：仍未找到 CraneSB（%.1fs），继续等待", d);
+                }
             });
         }
     }

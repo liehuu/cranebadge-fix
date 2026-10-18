@@ -225,6 +225,7 @@
 #import <stdarg.h>
 #import <ctype.h>
 #import <string.h>
+#import <sys/time.h>
 
 #pragma mark - 日志（同时输出到系统日志 + 文件）
 
@@ -570,19 +571,52 @@ static BOOL is_inited(void) {
 
 static BOOL is_string(id o) { return o && [o isKindOfClass:[NSString class]]; }
 
+// ★★ v0.9.2：清零标记加**保持期**，防止被同一事件里的回写立刻抵消。
+//
+// 实机日志铁证（v0.9.1，00:05:11.832，五次全部如此）：
+//   00:05:11.832 已清零标记: com.tencent.xin      ← mark_cleared(YES)
+//   00:05:11.832 撤销清零标记: com.tencent.xin    ← 同一毫秒被撤销！
+//   00:05:11.832 [写] SetContainerCount count=3
+//
+// 成因：v=0 分支里我们先 mark_cleared(YES)，然后调 orig_PrivSetBadge；
+// Crane 在其中把 count>0 回写进容器 → 触发 rep_SetContainerCount 的
+// mark_cleared(NO) → 刚设上的标记被**同一毫秒**撤销 → 读取侧压制从未生效。
+//
+// 解法：置位后进入「保持期」（CLEAR_HOLD_SECONDS），期内忽略撤销请求。
+// 保持期过后若 Crane 又回写非零，说明确有新消息，此时才真正撤销。
+static NSMutableDictionary *g_clearedAt = nil;   // appID -> @(置位时的 uptime 秒)
+
+#define CLEAR_HOLD_SECONDS 3.0
+
+static double uptime_now(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec + (double)tv.tv_usec / 1e6;
+}
+
 static void mark_cleared(id appID, BOOL cleared) {
     if (!is_string(appID)) return;
     pthread_mutex_lock(&g_lock);
     if (cleared) {
         if (![g_clearedApps containsObject:appID]) {
             [g_clearedApps addObject:appID];
-            CBFLog(@"已清零标记: %@", appID);
+            CBFLog(@"已清零标记: %@（保持期 %.1f 秒）", appID, CLEAR_HOLD_SECONDS);
         }
+        g_clearedAt[appID] = @(uptime_now());
     } else {
+        NSNumber *at = g_clearedAt[appID];
+        if (at && (uptime_now() - at.doubleValue) < CLEAR_HOLD_SECONDS) {
+            // ★ 保持期内：忽略撤销，避免被同一次事件的 Crane 回写抵消
+            CBFLog(@"保持期内忽略撤销: %@（剩余 %.1f 秒）",
+                   appID, CLEAR_HOLD_SECONDS - (uptime_now() - at.doubleValue));
+            pthread_mutex_unlock(&g_lock);
+            return;
+        }
         if ([g_clearedApps containsObject:appID]) {
             [g_clearedApps removeObject:appID];
             CBFLog(@"撤销清零标记: %@", appID);
         }
+        [g_clearedAt removeObjectForKey:appID];
     }
     pthread_mutex_unlock(&g_lock);
 }
@@ -605,75 +639,27 @@ static void remember_container(id appID, id containerID) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// v0.9.0：「未读数下降」= 用户已读的可靠信号
+// ⛔ v0.9.2 已整体删除：「未读数下降」判据及其记账表
 // ════════════════════════════════════════════════════════════════════
-// v0.8.3 实机日志的决定性发现：**微信全程没发过一次 badgeNumber=0**。
-// 23:37:07~23:37:20 共 20 次调用的 v 值是 1,2,3,4,3,4,5,5,2,3,4,3,4,5,5…
+// v0.9.0 引入、v0.9.1 分通道加固，v0.9.2 **整体删除**。
 //
-// 注意这个序列：**它会下降**（4→3、5→2）。这不是噪声 ——
-// 用户每读掉一批消息，微信上报的未读总数就下降。
-// 而我们此前只在 v==0 时置 is_cleared，等一个永远不来的信号 → 快捷菜单永不抑制。
+// 删除理由是实机日志证明的**根本性错误**，不是调参问题：
 //
-// 修复思路（保守）：
-//   记住该 app 上一次上报的未读数 vPrev；
-//   当新值 vNew < vPrev 时，说明用户读了东西 → 把 Crane 的 per-container
-//   缓存按差值回收（purge），并把已读数记下来；
-//   当 vNew > vPrev（新消息）时，撤销清零标记，恢复正常显示。
+// v0.9.1 实机日志（00:05:11~00:05:16，同一模式连续出现 5 次）：
+//   00:05:11.828 ↓ 未读下降[A] app=com.tencent.xin 4 → 3
+//   00:05:11.832 [写] SetContainerCount cid=2C76F901… count=3   ← 同一值回写
+//   00:05:13.449 ↓ 未读下降[A] app=com.tencent.xin 4 → 2
+//   00:05:13.454 [写] SetContainerCount cid=2C76F901… count=2   ← 同一值回写
+//   00:05:14.453 ↓ 未读下降[A] app=com.tencent.xin 4 → 3
+//   …… 五次全部如此，每次「下降」后 0.3 秒内 Crane 都把**完全相同的值**写回。
 //
-// 为什么这个判据安全：
-//   ① 下降只可能由「用户已读」造成（新消息只会让数字变大）；
-//   ② 差值回收精确到「少了多少条就清多少」，不会吞掉真实新消息；
-//   ③ 不依赖任何 ObjC 方法调用，纯 C 层数据流。
-// ⚠️ v0.9.1 修一个 v0.8.3 就潜伏的**语义混用**缺陷：
-//   这个字典的 key 只有 appID，于是被**两个语义完全不同的来源共用**：
-//     · rep_PrivSetBadge      传的是「该 app 的**总**未读数」（微信上报的 badgeNumber）
-//     · rep_SetContainerCount 传的是「**单个容器**的未读数」
-//   两者放进同一张表比大小 → 必然误判下降。
-//   实机日志里 `非清零信号 v=5` 紧跟着 `[写] SetContainerCount count=2` 就是
-//   总数 5 之后写入单容器 2 → 被当成「5→2 巨幅下降」→ 误 purge。
+// → A 通道的 v 与 Crane 写入 per-container 的 count 是**同一份数据**，
+//   「下降」只是 Crane 内部重算的中间态，**不是**「用户已读」。
+// → 后果：v0.9.0/v0.9.1 的 purge 五次全部「清理残留 0 个」，判据完全无效；
+//   且每次下降都会置 is_cleared(YES)，开启一条**错误的压制路径**。
 //
-// → 现按 key 前缀分开记账：A|appID（总数）与 C|appID|cid（单容器）。
-//   「用户已读」的判定**只信任总数通道**（rep_PrivSetBadge），
-//   因为那才是微信对「整条会话已读」的表态；
-//   单容器通道只做诊断记录，不触发 purge。
-static NSMutableDictionary *g_lastCount = nil;    // "A|appID" / "C|appID|cid" -> @(上次未读数)
-
-// ⚠️ v0.9.0 去重：同一次未读事件会被 rep_PrivSetBadge 与 rep_SetContainerCount
-// **各上报一次同一个值**（实机日志里 `非清零信号 v=2` 与
-// `[写] SetContainerCount count=2` 是紧挨着的一对）。
-// 若两边都独立记一次「上次值」，第二条会把自己当成 0 来比 → 误判下降 → 重复 purge。
-// 解法：**只有当新值与上次记录不同**才算一次真实变化；相同值直接跳过。
-// 这样 2 → 2 不会被判成 2→0 的下降。
-
-// 返回 YES 表示检测到「未读数下降」（用户已读）
-//
-// ⚠️ v0.9.1：key 改为**带前缀的通道标识**。
-//   channel = @"A"（app 级总数，来自微信 badgeNumber）或 @"C"（单容器计数）。
-//   不同通道必须分开记账，否则「总数 5」与「单容器 2」放一起比会误判下降。
-static BOOL note_count_change(id appID, unsigned long long vNew, NSString *channel,
-                              unsigned long long *deltaOut) {
-    if (!is_string(appID) || !is_string(channel)) return NO;
-    // ⚠️ v0.9.0 并发加固：rep_PrivSetBadge 与 rep_SetContainerCount 可能被不同线程
-    //   同时进入。原来的 `if (!g_lastCount) g_lastCount = [NSMutableDictionary dictionary];`
-    //   是「检查后创建」，两个线程会各建一个 → 后者覆盖前者 → 状态丢失。
-    //   改用 dispatch_once 保证唯一初始化。
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{ g_lastCount = [NSMutableDictionary dictionary]; });
-
-    NSString *key = [NSString stringWithFormat:@"%@|%@", channel, appID];
-
-    pthread_mutex_lock(&g_lock);
-    NSNumber *prevNum = g_lastCount[key];
-    unsigned long long vPrev = prevNum ? prevNum.unsignedLongLongValue : vNew;
-    BOOL sameAsPrev = (vNew == vPrev);          // 同一事件的第二个上报
-    g_lastCount[key] = @(vNew);
-    BOOL dropped = (!sameAsPrev && vNew < vPrev);
-    pthread_mutex_unlock(&g_lock);
-
-    if (deltaOut) *deltaOut = dropped ? (vPrev - vNew) : 0;
-    if (dropped) CBFLog(@"↓ 未读下降[%@] app=%@ %llu → %llu", channel, appID, vPrev, vNew);
-    return dropped;
-}
+// 现在只保留唯一确定性信号：v == 0（实测提醒事项 / SideStore / 抖音确实会发 v=0）。
+// 微信实测从不发 0（全程 v ≥ 1），这是微信自身行为，本补丁不强求。
 
 #pragma mark - ⛔ 已移除：Crane 官方 crane_resetBadge... API 调用
 //
@@ -749,9 +735,25 @@ static NSDictionary *load_badge_store(NSString *p) {
                                                             options:NSPropertyListImmutable
                                                              format:NULL
                                                               error:NULL] : nil;
-    CBFLog(@"BadgeStore 探测 %@ : exists=%d size=%llu bytes=%lu plist=%@",
-           p, exists, sz, (unsigned long)raw.length,
-           [obj isKindOfClass:[NSDictionary class]] ? @"dict" : (obj ? @"other" : @"nil"));
+    // ★ v0.9.2 降噪：plist 探测每 3 秒 × 4 条候选路径 = 30 秒刷 40 行，
+    //   把真正的关键事件（写/读/清零）全埋了（实机日志 310 行里约 200 行是它）。
+    //   改为只在「可读状态」或「文件大小」变化时打印，静态的 not-found 只打一次。
+    static NSMutableDictionary *lastSeen = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ lastSeen = [NSMutableDictionary dictionary]; });
+
+    NSString *key = p;
+    NSString *sig = [NSString stringWithFormat:@"%d|%llu", exists ? 1 : 0, sz];
+    pthread_mutex_lock(&g_lock);
+    NSString *prevSig = lastSeen[key];
+    [lastSeen[key] = sig];
+    pthread_mutex_unlock(&g_lock);
+
+    if (!prevSig || ![prevSig isEqualToString:sig]) {
+        CBFLog(@"BadgeStore 探测 %@ : exists=%d size=%llu bytes=%lu plist=%@",
+               p, exists, sz, (unsigned long)raw.length,
+               [obj isKindOfClass:[NSDictionary class]] ? @"dict" : (obj ? @"other" : @"nil"));
+    }
     return [obj isKindOfClass:[NSDictionary class]] ? obj : nil;
 }
 
@@ -940,6 +942,18 @@ static void harvest_init_once(void) {
     });
 }
 
+// ★★ v0.9.2：harvest 只在**启动那一瞬间**登记残留，不再每 3 秒重跑。
+//
+// v0.9.0/v0.9.1 的铁证缺陷（日志 00:05:07）：
+//   00:05:07.515 [写] SetContainerCount count=1        ← 用户收到新消息
+//   00:05:07.941 从 plist 发现残留 基线count=1          ← harvest 把它当残留登记
+//   00:05:07.964 清零完成：已清 1 个残留                ← 于是这条新消息被清掉
+// 因为 harvest 每 3 秒重跑，窗口内到达的新消息**第一次**被看到时
+// 必然「基线 = 当前值」，随后的 purge 就把它当残留清掉 —— 图标角标闪一下就没。
+//
+// 修正：
+//   ① harvest 只在 schedule_zero_mode 的第 0 轮跑一次（启动瞬间 = 真正的历史残留）；
+//   ② 之后每 3 秒只重读 plist 做「基线比对」，**不再登记任何新残留**。
 static void harvest_from_plist(void) {
     harvest_init_once();
     // v0.8：先存到局部变量再遍历。for...in 直接写 badge_store_paths()
@@ -952,6 +966,7 @@ static void harvest_from_plist(void) {
         walk_plist(d, nil, nil);
     }
 }
+
 
 // ★★ v0.9.1：重读 BadgeStore.plist，取出每个 (app,cid) 的**当前**未读数。
 // 这是「残留 vs 新消息」判据的数据来源。
@@ -973,57 +988,34 @@ static void snapshot_current_counts(NSMutableDictionary *out) {
     }
 }
 
-// ★★ v0.9.1：purge_containers 的**保守替代品**，用于「未读下降即已读」路径。
-//
-// v0.9.0 在 rep_PrivSetBadge 里调 purge_containers(appID) 清掉该 app 的**所有**容器，
-// 这是个会误伤用户的动作：用户读掉 A 会话的同时，B/C 会话里还没看的未读
-// 会被一起清零 → 吞消息。而"下降就清全部"在本场景里毫无必要：
-// 用户已读之后该 app 的剩余未读本来就是想看的，只清**旧残留**就够了。
-//
-// 现在的策略（三重保护，任一命中即跳过清零）：
-//   ① 只处理在启动 harvest 中登记过的容器（不是残留的一律不动）；
-//   ② 重读 plist，若当前 count **高于**基线 → 期间来了新消息 → 跳过；
-//   ③ 当前 count 为 0 → 已经清过了 → 跳过（避免无谓写盘）。
-// 返回实际清理的容器数。
-static unsigned long long purge_app_residuals(id appID) {
-    if (!is_string(appID)) return 0;
+// ★★ v0.9.2：运行期轮询**只比对、不登记**。
+//   用途：清零窗口内 Crane 若把某个容器写高了，我们能发现「新消息」并保护它，
+//   但绝不能把它（连同首次出现的新容器）登记成残留 —— 那是 v0.9.1 吞新消息的根因。
+static void poll_plist_for_live_unread(void) {
+    NSMutableDictionary *cur = [NSMutableDictionary dictionary];
+    snapshot_current_counts(cur);
+    if (!cur.count) return;
 
     pthread_mutex_lock(&g_harvestLock);
     NSArray *pairs = [g_harvested allKeys];
     pthread_mutex_unlock(&g_harvestLock);
-    if (!pairs.count) return 0;
+    if (!pairs.count) return;
 
-    NSString *prefix = [appID stringByAppendingString:@"|"];
-    NSMutableArray *mine = [NSMutableArray array];
-    for (NSString *p in pairs) if ([p hasPrefix:prefix]) [mine addObject:p];
-    if (!mine.count) {
-        // 一个残留都没登记 → 用已知容器兜底（首次启动、plist 为空的场景）
-        pthread_mutex_lock(&g_lock);
-        NSArray *cids = [g_containers[appID] allObjects];
-        pthread_mutex_unlock(&g_lock);
-        for (id cid in cids) purge_one(appID, cid);
-        return (unsigned long long)cids.count;
-    }
-
-    NSMutableDictionary *cur = [NSMutableDictionary dictionary];
-    snapshot_current_counts(cur);
-
-    unsigned long long n = 0;
-    for (NSString *p in mine) {
+    for (NSString *p in pairs) {
+        long long baseline = 0;
         NSArray *kv = [p componentsSeparatedByString:@"|"];
         if (kv.count != 2) continue;
-        long long baseline = 0;
         if (!residual_baseline(kv[0], kv[1], &baseline)) continue;
-
         NSNumber *curNum = cur[p];
         long long curNow = curNum ? curNum.longLongValue : 0;
-        if (curNow == 0) continue;          // ③ 已清过
-        if (curNow > baseline) continue;    // ② 有活跃新消息 → 保留
-
-        purge_one(kv[0], kv[1]);
-        n++;
+        if (curNow > baseline) {
+            static dispatch_once_t once;
+            dispatch_once(&once, ^{
+                CBFLog(@"运行期：新消息容器 %@|%@ 当前 %lld > 启动基线 %lld（不清零）",
+                       kv[0], kv[1], curNow, baseline);
+            });
+        }
     }
-    return n;
 }
 
 // 只 purge「启动 harvest 时就在 plist 里、且此后 count 未被抬高」的容器。
@@ -1186,16 +1178,16 @@ static void schedule_zero_mode(void) {
     CBFLog(@"启动清零：plist 历史残留 %lu 个 (app,cid) 组合", harvest_count());
 
     dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
-    for (int i = 0; i < ZERO_MODE_SECONDS / 3; i++) {
+    for (int i = 1; i < ZERO_MODE_SECONDS / 3; i++) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 3.0 * NSEC_PER_SEC)), q, ^{
             if (!g_zeroMode) return;
-            harvest_from_plist();      // 随时抓 Crane 又写回去的历史残留
-            purge_harvested_only();    // 只清历史残留，不碰新消息
+            // ★ v0.9.2：不再 harvest（会吞新消息），只轮询比对，用于诊断。
+            poll_plist_for_live_unread();
+            purge_harvested_only();    // 只清「启动瞬间登记」的残留
         });
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ZERO_MODE_SECONDS * NSEC_PER_SEC)), q, ^{
-        harvest_from_plist();
-        purge_harvested_only();
+        purge_harvested_only();          // 收尾：最后再清一次启动时登记的残留
         g_zeroMode = NO;
         CBFLog(@"启动清零模式结束，已恢复正常计数");
     });
@@ -1207,6 +1199,25 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
     unsigned long long cnt = orig_GetContainerCount ? orig_GetContainerCount(appID, containerID, flag) : 0;
     remember_container(appID, containerID);
     if (cnt > 0) {
+        // ★ v0.9.2 降噪：快捷菜单每 7~15 秒轮询一次且值不变，
+        //   会持续刷屏（实机日志末尾 5 行全是值=4 的重复读取）。
+        //   改为只在「该容器的读数发生变化」时打印。
+        {
+            static NSMutableDictionary *lastRead = nil;
+            static dispatch_once_t once;
+            dispatch_once(&once, ^{ lastRead = [NSMutableDictionary dictionary]; });
+            NSString *k = [NSString stringWithFormat:@"%@|%@", appID, containerID];
+            NSString *v = [NSString stringWithFormat:@"%llu", cnt];
+            pthread_mutex_lock(&g_lock);
+            NSString *pv = lastRead[k];
+            [lastRead[k] = v];
+            pthread_mutex_unlock(&g_lock);
+            // ⚠️ 值未变时只**跳打印**，绝不能 return ——
+            //   提前 return 会跳过下面的压制逻辑（zeroMode / is_cleared），
+            //   导致清零失效。这是 v0.9.2 降噪改动里我自己引入的 bug，已修正。
+            if (!pv || ![pv isEqualToString:v])
+                CBFLog(@"[读] GetContainerCount app=%@ cid=%@ → %llu", appID, containerID, cnt);
+        }
         // ★ v0.8.3 新增诊断：快捷菜单（_crane_replacementMenu @0xfb88 与
         //   _initApplicationShortcutLateHooks_12Down @0x129e0）都调用本函数。
         CBFLog(@"[读] GetContainerCount app=%@ cid=%@ → %llu", appID, containerID, cnt);
@@ -1246,7 +1257,18 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
 static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
     unsigned long long cnt = orig_GetAppCount ? orig_GetAppCount(appID, flag) : 0;
     if (cnt == 0) return 0;
-    CBFLog(@"[读] GetAppCount app=%@ → %llu", appID, cnt);
+    {   // ★ v0.9.2 降噪：只在值变化时打印
+        static NSMutableDictionary *lastApp = nil;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{ lastApp = [NSMutableDictionary dictionary]; });
+        NSString *v = [NSString stringWithFormat:@"%llu", cnt];
+        pthread_mutex_lock(&g_lock);
+        NSString *pv = lastApp[appID];
+        [lastApp[appID] = v];
+        pthread_mutex_unlock(&g_lock);
+        if (!pv || ![pv isEqualToString:v])
+            CBFLog(@"[读] GetAppCount app=%@ → %llu", appID, cnt);
+    }
 
     // ★ v0.9.1：zeroMode 期间，只有当该 app 的**每一个**已知容器都没有新消息时才压制。
     //   只要有一个容器来了新消息，就如实返回，避免吞掉图标角标。
@@ -1278,29 +1300,24 @@ static void rep_SetExistingBadge(id self, SEL _cmd, id appID, unsigned long long
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
     remember_container(appID, containerID);
 
-    // ⚠️ v0.6 实测日志发现的设计缺陷：清零模式期间**真实新消息**也会被压零
-    //   （日志：badgeNumber=1→2→3 被依次「清零模式压零」，用户新消息被吞）。
-    //   清零模式的目的是清「启动时从 plist 恢复的历史残留」，
-    //   而历史残留在启动那一刻就已经全部枚举完了（harvest_from_plist）。
-    //   所以这里**不再**拦截写入，只保留标记更新 + 透传。
-    if (count > 0) mark_cleared(appID, NO);
-    else if (count == 0) mark_cleared(appID, YES);
+    // ⚠️ v0.9.2：这里的 mark_cleared 调用**全部移除**，只保留原样透传。
+    //
+    // 原因（v0.9.1 实机日志铁证，五次全部如此）：
+    //   00:05:11.832 已清零标记: com.tencent.xin      ← rep_PrivSetBadge 的 v=0/下降分支置位
+    //   00:05:11.832 撤销清零标记: com.tencent.xin    ← 本函数 mark_cleared(NO) 撤销
+    //   00:05:11.832 [写] SetContainerCount count=3   ← 同一毫秒内的 Crane 回写
+    //
+    // Crane 在处理清零信号时会**立刻**把 count>0 回写进容器，
+    // 于是 rep_PrivSetBadge 刚设上的抑制被本函数在同一毫秒撤销，
+    // 读取侧（GetContainerCount/GetAppCount）的压制从未真正生效 —— 这就是
+    // 「快捷菜单红点清不掉」在 v0.9.0/v0.9.1 上的机制性原因。
+    //
+    // 现在：清零标记**只**由 rep_PrivSetBadge 的 v==0 分支设置，
+    // 且带 3 秒保持期（见 mark_cleared），期间内的回写不撤销它。
+    // 新消息到来会自然体现在 count 上（>0），读取侧如实返回。
 
-    // ★ v0.8.3 新增诊断：这是 Crane **写入** per-container 角标缓存的唯一入口。
-    //   v0.8.3 实机日志已证实这条路径**确实被调用**（20+ 次），
-    //   所以我上一轮「写路径不走这里」的推断是错的 —— 当时只是没打日志。
+    // ★ v0.8.3 诊断：这是 Crane 写入 per-container 角标缓存的唯一入口（实测 20+ 次）。
     CBFLog(@"[写] SetContainerCount app=%@ cid=%@ count=%llu", appID, containerID, count);
-
-    if (count > 0) {
-        // ⚠️ v0.9.1 修语义混用：这里传的是**单容器**计数，
-        //   必须用 "C" 通道记账，不能与 rep_PrivSetBadge 的「app 总数」混在一张表。
-        //   v0.9.0 两者共用 g_lastCount[appID] → 日志里
-        //   `v=5`（总数）紧跟 `count=2`（单容器）被误判成「5→2 巨幅下降」→ 误 purge。
-        //   注意：C 通道**只记账不触发 purge**，因为「单个容器计数变化」
-        //   与「用户已读」没有必然关系，据此 purge 会误伤。
-        unsigned long long delta = 0;
-        note_count_change(appID, count, @"C", &delta);
-    }
 
     if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
 }
@@ -1316,41 +1333,34 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
         before = [g_containers[bundleID] count];
         pthread_mutex_unlock(&g_lock);
         purge_containers(bundleID);
-        CBFLog(@"★ 清零信号 v=0 app=%@ 已知容器=%lu", bundleID, (unsigned long)before);
+        CBFLog(@"★★ 清零信号 v=0 app=%@ 已知容器=%lu → 已清 Crane 缓存并抑制读取", bundleID, (unsigned long)before);
         mark_cleared(bundleID, YES);
     } else if (v > 0) {
-        // ★★ v0.9.0 引入、v0.9.1 收紧：「未读数下降」= 用户已读。
-        //   微信清角标**从不发 v=0**（v0.8.3 实机铁证，20 次上报最低只到 1），
-        //   但它的未读总数会下降（4→3、5→2）—— 那才是真实的已读信号。
+        // ═══ ★★ v0.9.2：作废「未读下降 = 已读」判据（v0.9.0/v0.9.1 的核心错误）═══
         //
-        //   时机选在这里最好：_privSetBadgeNumberHook 是「系统准备设置角标」的入口，
-        //   在 Crane 写入新值之前先把它的 per-container 缓存清掉，
-        //   既不吞掉本次新消息（写入仍原样透传），又能让后续菜单读取拿到 0。
+        // 实机日志铁证（v0.9.1，00:05:11~00:05:16，五次全部如此）：
+        //   00:05:11.828 ↓ 未读下降[A] app=com.tencent.xin 4 → 3
+        //   00:05:11.832 [写] SetContainerCount count=3     ← 同一个值被写回
+        //   00:05:13.449 ↓ 未读下降[A] app=com.tencent.xin 4 → 2
+        //   00:05:13.454 [写] SetContainerCount count=2     ← 又是同一个值
+        //   ……5 次下降，每次都在 0.3 秒内被 Crane 写回**完全相同的值**。
         //
-        // ⚠️ v0.9.1 用 "A"（app 总数）通道记账，与单容器通道严格隔离。
-        unsigned long long delta = 0;
-        BOOL dropped = note_count_change(bundleID, (unsigned long long)v, @"A", &delta);
-        if (dropped) {
-            NSUInteger before = 0;
-            pthread_mutex_lock(&g_lock);
-            before = [g_containers[bundleID] count];
-            pthread_mutex_unlock(&g_lock);
-
-            // ★★ v0.9.1 修一个会误伤的连带缺陷：
-            //   v0.9.0 在这里调 purge_containers(bundleID)，
-            //   它会把该 app 的**所有**容器清零 —— 包括那些此刻
-            //   仍有未读、用户还没看的容器。
-            //   用户读掉 A 会话的同时，B 会话的未读就被一起清掉（吞消息）。
-            //   现在精确到「当前 count 不高于 harvest 基线」的容器，
-            //   即只清那些**确实是旧残留**的，有活跃未读的一律保留。
-            unsigned long long purged = purge_app_residuals(bundleID);
-            CBFLog(@"★ 未读下降即已读 v=%lld→清理残留 %llu 个 app=%@ 已知容器=%lu delta=%llu",
-                   v, purged, bundleID, (unsigned long)before, delta);
-            mark_cleared(bundleID, YES);
-        } else {
-            // 未读数没下降（新消息或未变），恢复正常计数
-            mark_cleared(bundleID, NO);
-        }
+        // 结论：A 通道的 v 与 Crane 写入 per-container 的 count 是**同一份数据**，
+        //「下降」只是 Crane 内部重算时的中间态，**不是**「用户已读」的信号。
+        // v0.9.0/v0.9.1 基于它做 purge，5 次全部「清理残留 0 个」—— 判据完全无效。
+        //
+        // 现在的处理：v > 0 一律**如实透传**，不做任何 purge。
+        // 已读清零只认 v == 0 这一个确定性信号（其他 app 的提醒事项/SideStore
+        // 实测确实会发 v=0；微信实测从不发 0 —— 这是微信侧的行为，本补丁不强求）。
+        //
+        // ⚠️ v>0 时**不能**在这里 mark_cleared(NO)。
+        //   v0.9.1 的错误：v==0 分支刚 mark_cleared(YES)，紧接着 orig_PrivSetBadge
+        //   让 Crane 回写 count>0 → rep_SetContainerCount 再 mark_cleared(NO)，
+        //   两者在同一毫秒内互相抵消 → 读取侧压制从未生效（日志五次「已清零标记」
+        //   后面紧跟「撤销清零标记」）。现由 mark_cleared 的**保持期**统一处理。
+        CBFLog(@"非清零信号 v=%lld app=%@ → 如实透传", v, bundleID);
+    } else {
+        CBFLog(@"异常信号 v=%lld app=%@（既非 0 也非正数，不做处理）", v, bundleID);
     }
     if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
 }
@@ -1422,12 +1432,13 @@ __attribute__((constructor)) static void CBFInit(void) {
         //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
         //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
         //   中文说明另起一行打。
-        CBFLog(@"==== CraneBadgeFix BUILD_TAG_091 (2026-10-18) ====");
-        CBFLog(@"版本 v0.9.1：plist 基线判据修 v0.9.0 回归（图标角标收消息不亮）+ 未读下降清残留");
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_092 (2026-10-19) ====");
+        CBFLog(@"版本 v0.9.2：作废「未读下降=已读」判据 + 清零标记保持期 + harvest 只登记一次");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 
         g_clearedApps = [[NSMutableSet alloc] init];
+        g_clearedAt   = [[NSMutableDictionary alloc] init];
         g_containers  = [[NSMutableDictionary alloc] init];
 
         dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);

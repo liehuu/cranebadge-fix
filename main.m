@@ -376,8 +376,6 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
 // - (id)badgeValueForBundleID:   —— 快捷菜单角标的直接数据源
 static id (*orig_badgeValueForBundleID)(id, SEL, id) = NULL;
 static void (*orig_setBadgeValueForBundleID)(id, SEL, id, id) = NULL;
-static NSString *g_badgeValOwner = nil;
-static NSString *g_setBadgeValOwner = nil;
 
 static id rep_badgeValueForBundleID(id self, SEL _cmd, id bundleID) {
     id v = orig_badgeValueForBundleID ? orig_badgeValueForBundleID(self, _cmd, bundleID) : nil;
@@ -402,12 +400,16 @@ static void rep_setBadgeValueForBundleID(id self, SEL _cmd, id value, id bundleI
     if (orig_setBadgeValueForBundleID) orig_setBadgeValueForBundleID(self, _cmd, value, bundleID);
 }
 
-// 扫描 CraneSB 镜像内所有类，找到实现指定 selector 的 owner
+// 扫描 CraneSB 镜像内所有类，找到实现指定 selector 的 owner 并下钩。
+// 注意：ARC 下不能把全局 NSString* 的地址作为 __autoreleasing 出参写回
+//   （error: passing address of non-local object to __autoreleasing parameter
+//    for write-back），所以 owner 只记日志，不往外部回写。
 static void hook_objc_selector(const char *selName, const char *label,
-                               void *replacement, void **origOut,
-                               NSString **ownerOut) {
+                               void *replacement, void **origOut) {
     SEL sel = sel_registerName(selName);
     if (!sel) return;
+    MSHookFunction_t hooker = pMSHookFunction;
+    if (!hooker) return;
     int count = objc_getClassList(NULL, 0);
     if (count <= 0) return;
     Class *classes = (Class *)calloc((size_t)count, sizeof(Class));
@@ -422,11 +424,9 @@ static void hook_objc_selector(const char *selName, const char *label,
         if (!m) continue;
         IMP imp = method_getImplementation(m);
         if (!imp) continue;
-        MSHookFunction_t hooker = pMSHookFunction;
-        if (!hooker) return;
+        memset(origOut, 0, sizeof(void *));
         hooker((void *)imp, replacement, origOut);
         if (*origOut) {
-            if (ownerOut) *ownerOut = NSStringFromClass(c);
             CBFLog(@"已 hook %s -> -[%@ %s] IMP=%p", label, NSStringFromClass(c), selName, (void *)imp);
             free(classes);
             return;
@@ -440,10 +440,10 @@ static void install_objc_hooks(void) {
     discover_reset_api();
     hook_objc_selector("badgeValueForBundleID:", "badgeValueForBundleID",
                        (void *)rep_badgeValueForBundleID,
-                       (void **)&orig_badgeValueForBundleID, &g_badgeValOwner);
+                       (void **)&orig_badgeValueForBundleID);
     hook_objc_selector("setBadgeValue:forBundleID:", "setBadgeValue:forBundleID:",
                        (void *)rep_setBadgeValueForBundleID,
-                       (void **)&orig_setBadgeValueForBundleID, &g_setBadgeValOwner);
+                       (void **)&orig_setBadgeValueForBundleID);
 }
 
 #pragma mark - 安装 C 函数 hook

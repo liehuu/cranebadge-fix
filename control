@@ -6,4 +6,5 @@ Maintainer: 82flex
 Author: 82flex
 Section: Tweaks
 Depends: firmware (>= 14.0), mobilesubstrate, com.wkk.crane (>= 1.3.17)
-Architecture: iphoneos-arm64
+Architecture: iphoneos-arm64e
+Installed-Size: 100

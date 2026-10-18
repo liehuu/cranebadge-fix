@@ -13,7 +13,7 @@ CraneBadgeFix deb 打包器（零依赖，Python 标准库）。
 import io, os, sys, tarfile, plistlib
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT  = os.path.join(ROOT, "out", "com.82flex.cranebadgefix_0.2.0_iphoneos-arm64.deb")
+OUT  = os.path.join(ROOT, "out", "com.82flex.cranebadgefix_0.2.0_iphoneos-arm64e.deb")
 DYLIB = os.path.join(ROOT, "out", "CraneBadgeFix.dylib")
 PLIST = os.path.join(ROOT, "CraneBadgeFix.plist")
 CONTROL = os.path.join(ROOT, "control")

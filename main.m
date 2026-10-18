@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.9.3（启动清零误吞新消息 + DEFAULT 容器覆盖 + 移除失效探针）
+ * CraneBadgeFix v0.9.4（zeroMode 活跃标记：修「当前 < 基线」被当残留吞掉）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -224,6 +224,22 @@
  *   由 3 秒保持期挡掉 v=0 后同毫秒/紧接着的撤销请求并到期补撤销；
  *   旧值回写发生在 orig_PrivSetBadge 内部、不经过本函数，天然不误触发。
  *   一直没有 v>0 时 is_cleared 持续保持 → 残留角标永不复活（核心目的）。
+ *
+ * ── v0.9.4：修「当前 < 基线」被判据盲区吞掉（v0.9.3 实机日志铁证）───────
+ * v0.9.3 实机日志（01:00~01:02）证明 v0.9.3 的三个修复都生效
+ * （启动窗口后新消息全部透传、DEFAULT 场景未复现、降噪生效、
+ *  v=0 链路对提醒事项/SideStore 按设计工作），但抓到新缺陷：
+ *   01:01:48.201 从 plist 发现残留 基线count=3
+ *   01:02:12.229 非清零信号 v=1 → [写] count=1  ← 用户已读到剩 1 条（或新来 1 条）
+ *   01:02:12.230 抑制残留容器角标 1              ← 当前 1 < 基线 3，被误当旧残留
+ *   01:02:12.239 清零完成：已清 1 个残留         ← purge 还把真实计数清成了 0
+ * 「当前 > 基线 ⇒ 新消息」只覆盖未读**增加**，不覆盖**减少到基线以下**——
+ * 而「读完旧的再来新的」恰恰是最常见场景。
+ * 修：zeroMode 窗口内任何一次**主动上报**（SetContainerCount 写回，实测
+ * 每次都有 v 调用前置）都标记该容器为活跃（g_zeroLive），此后一律不压不清；
+ * Crane 的 plist 周期回写与 purge 的 orig 直调都不经过本函数，不会误标。
+ * 同版把 purge_harvested_only 的「清零完成」改为结果不变不打印
+ * （01:01:57~01:02:18 连续 5 行相同内容是纯噪声）。
  *
  * ── v0.9.0：找到「快捷菜单」的第一个真根因并修复 ────────────────────
  * v0.8.3 实机日志第一次看清了完整数据流（23:37:07~23:37:20）：
@@ -898,6 +914,7 @@ static BOOL looks_like_container_id(NSString *s) {
 
 static NSString *g_curAppID = nil;
 static NSMutableDictionary *g_harvested = nil;   // "appID|cid" -> @(harvest 时的 count 基线)
+static NSMutableSet        *g_zeroLive  = nil;   // v0.9.4：zeroMode 窗口内已活跃的 "appID|cid"
 static pthread_mutex_t g_harvestLock = PTHREAD_MUTEX_INITIALIZER;
 
 // ── v0.9.1：区分「历史残留」与「真实新消息」的唯一可靠判据 = plist 基线 ────
@@ -1015,11 +1032,55 @@ static void collect_counts_depth(id node, NSString *curApp, NSString *curCID,
 
 // v0.8 安全加固：g_harvested 的创建也要在锁内 + dispatch_once，
 // 避免两个并行的 harvest_from_plist 同时赋值。
+// ★ v0.9.4：g_zeroLive（活跃容器集合）也在此懒初始化。
 static void harvest_init_once(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         g_harvested = [NSMutableDictionary dictionary];
+        g_zeroLive  = [NSMutableSet set];
     });
+}
+
+// ★★ v0.9.4：「当前 > 基线」判据的盲区补丁 —— zeroMode 窗口内的活跃容器集合。
+//
+// 判据背景（v0.9.3 实机日志 01:02:12 铁证，完整分析见文件头 v0.9.4 节）：
+//   01:01:48.201 从 plist 发现残留 基线count=3
+//   01:02:12.229 非清零信号 v=1 → [写] count=1   ← 用户已读到剩 1 条（或新来 1 条）
+//   01:02:12.230 抑制残留容器角标 1               ← 当前 1 < 基线 3，被误当旧残留吞掉
+//   01:02:12.239 清零完成：已清 1 个残留          ← purge 还把真实计数清成了 0
+// 「当前 > 基线 ⇒ 新消息」只覆盖未读**增加**，不覆盖**减少到基线以下**——
+// 而「读完旧的再来新的」恰恰是最常见场景。
+//
+// 修正：窗口内任何一次**主动上报**（SetContainerCount 写回；实测每次都有
+// privSetBadge 的 v 调用前置）都证明该容器变活了，与数值涨跌无关 → 标记
+// live，此后一律不压、不清。
+// ⚠️ Crane 对 plist 的周期性回写**不经过** SetContainerCount（v0.9.3 日志
+//   里 plist 350/277 振荡时没有任何 [写] 行），purge 走 orig_SetContainerCount
+//   直调同样不进本函数 —— 两者都不会误标。
+static void zero_live_mark(id appID, id containerID) {
+    if (!g_zeroMode) return;
+    if (!is_string(appID) || !is_string(containerID)) return;
+    long long baseline = 0;
+    if (!residual_baseline(appID, containerID, &baseline)) return;   // 未登记：本来就不压不清
+    harvest_init_once();
+    NSString *pair = [NSString stringWithFormat:@"%@|%@", appID, containerID];
+    pthread_mutex_lock(&g_harvestLock);
+    BOOL already = [g_zeroLive containsObject:pair];
+    if (!already) [g_zeroLive addObject:pair];
+    pthread_mutex_unlock(&g_harvestLock);
+    if (!already)
+        CBFLog(@"zeroMode 标记活跃: %@|%@（窗口内出现主动上报，基线 %lld，此后不压不清）",
+               appID, containerID, baseline);
+}
+
+static BOOL zero_live_contains(id appID, id containerID) {
+    if (!is_string(appID) || !is_string(containerID)) return NO;
+    harvest_init_once();
+    NSString *pair = [NSString stringWithFormat:@"%@|%@", appID, containerID];
+    pthread_mutex_lock(&g_harvestLock);
+    BOOL r = [g_zeroLive containsObject:pair];
+    pthread_mutex_unlock(&g_harvestLock);
+    return r;
 }
 
 // ★★ v0.9.2：harvest 只在**启动那一瞬间**登记残留，不再每 3 秒重跑。
@@ -1128,6 +1189,10 @@ static void purge_harvested_only(void) {
         long long baseline = 0;
         if (!residual_baseline(kv[0], kv[1], &baseline)) continue;
 
+        // ★ v0.9.4：窗口内出现过主动上报 ⇒ 已活跃，绝不清
+        //   （v0.9.3 铁证 01:02:12：当前 1 < 基线 3 的已读/新消息被清成 0）
+        if (zero_live_contains(kv[0], kv[1])) { skipped++; continue; }
+
         NSNumber *curNum = cur[pair];
         long long curCount = curNum ? curNum.longLongValue : 0;
 
@@ -1140,7 +1205,14 @@ static void purge_harvested_only(void) {
         purge_one(kv[0], kv[1]);   // 精确到单个容器，不碰该 app 的其他容器
         cleared++;
     }
-    CBFLog(@"清零完成：已清 %llu 个残留，保护 %llu 个有新消息的容器", cleared, skipped);
+    // ★ v0.9.4 降噪：结果与上一轮相同就不打印。
+    //   v0.9.3 实机日志 01:01:57~01:02:18 连续 5 次「已清 1 个残留」其实
+    //   什么都没变（plist 早已干净），纯噪声。
+    static unsigned long long lastCleared = ~0ULL, lastSkipped = ~0ULL;
+    if (cleared != lastCleared || skipped != lastSkipped) {
+        CBFLog(@"清零完成：已清 %llu 个残留，保护 %llu 个有新消息的容器", cleared, skipped);
+        lastCleared = cleared; lastSkipped = skipped;
+    }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1200,6 +1272,10 @@ static BOOL zero_mode_should_suppress(id appID, id containerID, unsigned long lo
 
     long long baseline = 0;
     if (!residual_baseline(appID, containerID, &baseline)) return NO;   // 不是残留，不归我们管
+
+    // ★ v0.9.4：窗口内出现过主动上报 ⇒ 容器已活跃，无论数值涨跌都不压
+    //   （v0.9.3 铁证 01:02:12：当前 1 < 基线 3 的已读/新消息被误当残留吞掉）
+    if (zero_live_contains(appID, containerID)) return NO;
 
     // 重读 plist 拿当前值：只有「当前 > 基线」才说明期间来了新消息 → 放过
     NSMutableDictionary *cur = [NSMutableDictionary dictionary];
@@ -1268,6 +1344,13 @@ static BOOL app_safe_to_suppress(id appID) {
         [cids removeObject:kv[1]];      // 已登记的走上方的基线比对，避免重复处理
         long long baseline = 0;
         if (!residual_baseline(kv[0], kv[1], &baseline)) continue;
+        // ★ v0.9.4：窗口内已活跃的容器一律算「有新消息」，app 级不整体压制
+        //   （与 zero_mode_should_suppress 的 live 检查保持一致）
+        if (zero_live_contains(kv[0], kv[1])) {
+            CBFLog(@"app_safe_to_suppress: %@ 容器 %@|%@ 窗口内已活跃 → 不压",
+                   appID, kv[0], kv[1]);
+            return NO;
+        }
         NSNumber *curNum = cur[p];
         long long curNow = curNum ? curNum.longLongValue : 0;
         if (curNow > baseline) {
@@ -1309,6 +1392,11 @@ static void schedule_zero_mode(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ZERO_MODE_SECONDS * NSEC_PER_SEC)), q, ^{
         purge_harvested_only();          // 收尾：最后再清一次启动时登记的残留
         g_zeroMode = NO;
+        // ★ v0.9.4：清空活跃标记。窗口结束后 zero_mode_should_suppress /
+        //   app_safe_to_suppress 都不再走 zeroMode 分支，留着无害，清掉更干净。
+        pthread_mutex_lock(&g_harvestLock);
+        [g_zeroLive removeAllObjects];
+        pthread_mutex_unlock(&g_harvestLock);
         CBFLog(@"启动清零模式结束，已恢复正常计数");
     });
 }
@@ -1410,6 +1498,12 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
 
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
     remember_container(appID, containerID);
+    // ★★ v0.9.4：zeroMode 窗口内的每一次主动写回都标记该容器为「活跃」。
+    //   这是「当前 > 基线」判据的盲区补丁：用户已读到剩 1 条（当前 1 < 基线 3）
+    //   或新来 1 条，旧判据都会误当成残留 → 抑制 + purge 清掉（v0.9.3 铁证 01:02:12）。
+    //   窗口内的主动上报与数值涨跌无关，一律证明容器变活。
+    //   Crane 的 plist 周期回写与 purge 的 orig 直调都不经过本函数，不会误标。
+    zero_live_mark(appID, containerID);
 
     // ⚠️ v0.9.3 注意：本函数**不**做清零标记撤销（曾在此处放触发点，已移除）。
     //   原因：容器写回分两种，从数值上无法区分——
@@ -1549,8 +1643,8 @@ __attribute__((constructor)) static void CBFInit(void) {
         //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
         //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
         //   中文说明另起一行打。
-        CBFLog(@"==== CraneBadgeFix BUILD_TAG_093 (2026-10-19) ====");
-        CBFLog(@"版本 v0.9.3：修复启动清零误吞新消息 + DEFAULT 容器纳入判据 + 恢复新消息撤销清零标记 + 移除签名错误的 setExisting 探针");
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_094 (2026-10-19) ====");
+        CBFLog(@"版本 v0.9.4：zeroMode 活跃标记，修「当前 < 基线」的已读/新消息被误当残留吞掉");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

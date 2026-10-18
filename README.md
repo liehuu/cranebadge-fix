@@ -197,6 +197,10 @@ hook 逻辑：
    （**这一步才让 BadgeStore.plist 真正干净**，是持久化的关键），
    再打清零标记（带 3 秒保持期）兜底未记录到的容器。
    v > 0 一律如实透传（v0.9.0/v0.9.1 的「未读下降=已读」判据已作废，见 main.m 文件头）。
+   v0.9.5 追加：v > 0 时调用 `purge_stale_containers()` 清除「非活跃容器」
+   （最后一次写入早于本次 v 上报的容器）——修用户实测的「快捷菜单挂 2、
+   新消息角标变 3」（微信多开不发 v=0，已读后僵留容器无人清理）。
+   安全阀：只对确认过「v 上报后紧跟容器写」配对模式的 app 启用。
 2. `_badgeCountStoreGetContainerCount` —— per-container 读取出口（快捷菜单 + GetAppCount 求和）。
    zeroMode 期间只压制「plist 基线未变」的容器；is_cleared 期间压制已读 app。
 3. `_badgeCountStoreGetAppCount` —— app 级读取出口（图标角标）。
@@ -208,6 +212,9 @@ hook 逻辑：
 4. `_badgeCountStoreSetContainerCount` —— 写入出口，只透传 + 记住容器。
    v0.9.2 起不再在这里撤销清零标记（曾导致「已清零标记」与「撤销清零标记」
    同毫秒成对出现，压制从未生效）。
+   v0.9.5 追加：`note_container_write()` 记录容器写入时刻，并做
+   「v 上报后 2 秒内写入 ⇒ 配对确认」（g_vWritePaired）——这是
+   purge_stale_containers 安全阀的数据来源。
 
 每个 hook 打完都会检查 `orig != NULL` 并打日志；若地址下钩失败（`orig` 仍为 NULL）
 自动退回 `dlsym`，两条路都失败会打印 `*** 目标函数无法定位 ***` 明确报警。

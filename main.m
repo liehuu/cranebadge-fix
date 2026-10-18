@@ -1,8 +1,37 @@
 /*
- * CraneBadgeFix v0.9.4（zeroMode 活跃标记：修「当前 < 基线」被当残留吞掉）
+ * CraneBadgeFix v0.9.5（清除已读残留容器：修快捷菜单挂数 + 新消息角标基数错）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * ★★★ v0.9.5：用户实测反馈「快捷菜单挂 2，收到新消息角标变 3」
+ * ════════════════════════════════════════════════════════════════════
+ * 用户原话（01:59）：微信已读空后**不是角标挂 2，是快捷菜单挂 2，
+ * 角标确实是空的**；此时再收到 1 条，**图标角标变成 3**，实际只有 1 条未读。
+ *
+ * ── 根因（(18).log 01:48:43~01:52:04 铁证）─────────────────────────
+ * 微信在 UUID / DEFAULT 两个容器间来回记账，切换时旧容器不归零：
+ *   01:51:36  v=4 → [写] DEFAULT=4   GetAppCount=6（DEFAULT 4 + UUID 2）
+ *   01:52:03  v=1 → [写] UUID=1      GetAppCount=5（DEFAULT 4 + UUID 1）
+ *   01:52:04  v=2 → [写] UUID=2      GetAppCount=6（DEFAULT 4 + UUID 2）
+ * 用户已读（微信多开场景**从不发 v=0**，9 轮日志实证）后：
+ *   · 快捷菜单读 per-container（GetContainerCount）→ 直接显示僵留容器的 2；
+ *   · 图标角标此时恰好是空的（v 通道/回写把它压平），但**残留容器还在**；
+ *   · 新消息到来时角标走 GetAppCount 求和 = 残留 2 + 新消息 1 = 3。
+ * 即：**残留容器既污染快捷菜单（直接显示），又污染角标（新消息时参与求和）**。
+ *
+ * ── 修法 ───────────────────────────────────────────────────────────
+ * 新消息 v 上报时（privSetBadge v>0，微信主动上报 = 确定信号），
+ * 清除所有「非活跃容器」——最后一次写入早于本次 v 上报的容器。
+ * 判据依据（9 轮日志铁证）：每次 v 上报后 1ms 内微信必把当前值写进
+ * 活跃容器，因此 writeAt ≥ lastVAt 的才是活容器；旧容器是僵留残留。
+ * purge 走 orig_SetContainerCount 直调（Crane 自己负责持久化，
+ * 重启后也不复活），且不经过 rep_SetContainerCount，不会误标 writeAt。
+ *
+ * ⚠️ 安全阀：只对确认过「v 上报后紧跟容器写」配对模式的 app 启用
+ *   （g_vWritePaired，微信 9 轮日志铁证）。未确认配对的 app 一概不动，
+ *   避免误清「只走 v 通道、容器里是别处数据」的 app。
  *
  * ════════════════════════════════════════════════════════════════════
  * ★★★ v0.9.1：v0.9.0 引入严重回归，本版优先修复，并推翻 v0.9.0 的一个错误判据
@@ -599,6 +628,13 @@ static privSetBadge_t      orig_PrivSetBadge      = NULL;
 static NSMutableSet       *g_clearedApps = nil;
 static NSMutableDictionary *g_containers = nil;
 static pthread_mutex_t      g_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// ★★ v0.9.5：容器写入时刻表 + app 最近一次 v 上报时刻 + v→写配对确认。
+//   用途：识别「非活跃容器」（已读后无人更新的僵留容器），在新消息
+//   v 上报时清除之（详见文件头 v0.9.5 节与 purge_stale_containers）。
+static NSMutableDictionary *g_containerWriteAt = nil;   // appID -> {cid -> @(uptime)}
+static NSMutableDictionary *g_lastVAt        = nil;     // appID -> @(uptime)
+static NSMutableSet        *g_vWritePaired   = nil;     // 确认「v 上报后紧跟容器写」的 app
 static volatile BOOL        g_zeroMode = NO;
 static BOOL                 g_inited = NO;
 static pthread_mutex_t      g_initLock = PTHREAD_MUTEX_INITIALIZER;
@@ -731,6 +767,18 @@ static void remember_container(id appID, id containerID) {
     pthread_mutex_unlock(&g_lock);
 }
 
+// ★★ v0.9.5：记录容器「被写入」的时刻。只由 rep_SetContainerCount 调用
+//   （读路径 remember_container 不记录——读取不是活跃证据）。
+//   purge 的 orig 直调不经过本函数，因此「清理」不会被误判成「活跃写入」。
+static void note_container_write(id appID, id containerID) {
+    if (!is_string(appID) || !is_string(containerID)) return;
+    pthread_mutex_lock(&g_lock);
+    NSMutableDictionary *w = g_containerWriteAt[appID];
+    if (!w) { w = [NSMutableDictionary dictionary]; g_containerWriteAt[appID] = w; }
+    [w setObject:@(uptime_now()) forKey:containerID];
+    pthread_mutex_unlock(&g_lock);
+}
+
 // ════════════════════════════════════════════════════════════════════
 // ⛔ v0.9.2 已整体删除：「未读数下降」判据及其记账表
 // ════════════════════════════════════════════════════════════════════
@@ -801,6 +849,51 @@ static void purge_containers(id appID) {
 
     for (id cid in cids) purge_one(appID, cid);
     CBFLog(@"purge 完成 app=%@ 容器数=%lu", appID, (unsigned long)cids.count);
+}
+
+// ★★ v0.9.5：清除「非活跃容器」的已读残留（用户实测「快捷菜单挂 2、
+//   新消息角标变 3」的直接修复，根因分析见文件头 v0.9.5 节）。
+//
+// 判据：容器最后一次写入时刻（writeAt）早于该 app 最近一次 v 上报时刻
+//   （lastVAt）⇒ 该容器在此次上报后没有更新 ⇒ 是僵留残留。
+//   9 轮实机日志铁证：每次 privSetBadge 的 v 上报后 1ms 内，微信必把
+//   当前值写进活跃容器（01:41:38.075 v=1 → 01:41:38.076 [写] count=1），
+//   因此 writeAt ≥ lastVAt 的容器才是活的。
+//
+// 安全阀（两道）：
+//   ① 只对确认过「v 上报后紧跟容器写」配对模式的 app 启用
+//      （g_vWritePaired）——未确认的 app 容器里可能是别处数据，一概不动；
+//   ② 只清 orig 当前值 > 0 的容器（0 无需清，少一次写入少一次竞争）。
+//   purge 走 orig_SetContainerCount 直调：Crane 自己负责持久化（重启后
+//   残留也不复活），且不经过 rep_SetContainerCount，不会误标 writeAt。
+static void purge_stale_containers(id appID) {
+    if (!is_string(appID)) return;
+    if (!orig_SetContainerCount || !orig_GetContainerCount) return;
+
+    pthread_mutex_lock(&g_lock);
+    BOOL paired = [g_vWritePaired containsObject:appID];
+    NSNumber *vAtNum = g_lastVAt[appID];
+    double vAt = vAtNum ? vAtNum.doubleValue : 0.0;
+    NSMutableSet *known = g_containers[appID];
+    NSMutableDictionary *wats = g_containerWriteAt[appID];
+    NSArray *cids = known.count ? [known allObjects] : nil;
+    NSMutableArray *stale = [NSMutableArray array];
+    if (paired && vAt > 0.0) {
+        for (id cid in cids) {
+            NSNumber *w = wats[cid];
+            double wd = w ? w.doubleValue : 0.0;
+            if (wd < vAt) [stale addObject:cid];
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+
+    for (id cid in stale) {
+        unsigned long long cur = orig_GetContainerCount(appID, cid, 1);
+        if (cur > 0) {
+            CBFLog(@"v0.9.5 清除已读残留容器 app=%@ cid=%@（僵留值 %llu）", appID, cid, cur);
+            purge_one(appID, cid);
+        }
+    }
 }
 
 #pragma mark - BadgeStore.plist 读取（⛔ v0.8 起只读，不再回写）
@@ -1498,6 +1591,17 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
 
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
     remember_container(appID, containerID);
+    // ★★ v0.9.5：记录写入时刻（purge_stale_containers 的判据来源），
+    //   并做「v 上报后紧跟容器写」的配对确认——2 秒内发生过 v 上报
+    //   即视为配对（实测间隔约 1ms，2 秒窗口极其宽松）。
+    note_container_write(appID, containerID);
+    if (is_string(appID)) {
+        pthread_mutex_lock(&g_lock);
+        NSNumber *vAt = g_lastVAt[appID];
+        if (vAt && (uptime_now() - vAt.doubleValue) < 2.0)
+            [g_vWritePaired addObject:appID];
+        pthread_mutex_unlock(&g_lock);
+    }
     // ★★ v0.9.4：zeroMode 窗口内的每一次主动写回都标记该容器为「活跃」。
     //   这是「当前 > 基线」判据的盲区补丁：用户已读到剩 1 条（当前 1 < 基线 3）
     //   或新来 1 条，旧判据都会误当成残留 → 抑制 + purge 清掉（v0.9.3 铁证 01:02:12）。
@@ -1526,6 +1630,14 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
     long long v = -1;
     if (badgeNumberObj && [badgeNumberObj respondsToSelector:@selector(longLongValue)])
         v = [badgeNumberObj longLongValue];
+
+    // ★★ v0.9.5：记录最近一次 v 上报时刻（v=0 与 v>0 都是确定信号）。
+    //   purge_stale_containers 用它区分「活跃容器」与「僵留残留」。
+    if (is_string(bundleID) && v >= 0) {
+        pthread_mutex_lock(&g_lock);
+        g_lastVAt[bundleID] = @(uptime_now());
+        pthread_mutex_unlock(&g_lock);
+    }
 
     if (v == 0) {
         NSUInteger before = 0;
@@ -1571,6 +1683,11 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
         //   现在由 mark_cleared 的**保持期**统一裁决：保持期内的撤销一律忽略
         //   （并安排到期补撤销），保持期之外的撤销才真正生效。
         CBFLog(@"非清零信号 v=%lld app=%@ → 如实透传", v, bundleID);
+        // ★★ v0.9.5：清除非活跃容器的已读残留（用户实测「快捷菜单挂 2、
+        //   新消息角标变 3」的直接修复）。时机选在 orig_PrivSetBadge 之前：
+        //   微信随后 1ms 内写入新值覆盖，视觉上不会闪断；被清的容器即使
+        //   马上要被复用，也会立刻被写成当前值。
+        purge_stale_containers(bundleID);
     } else {
         CBFLog(@"异常信号 v=%lld app=%@（既非 0 也非正数，不做处理）", v, bundleID);
     }
@@ -1643,14 +1760,18 @@ __attribute__((constructor)) static void CBFInit(void) {
         //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
         //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
         //   中文说明另起一行打。
-        CBFLog(@"==== CraneBadgeFix BUILD_TAG_094 (2026-10-19) ====");
-        CBFLog(@"版本 v0.9.4：zeroMode 活跃标记，修「当前 < 基线」的已读/新消息被误当残留吞掉");
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_095 (2026-10-19) ====");
+        CBFLog(@"版本 v0.9.5：清除已读残留容器，修快捷菜单挂数 + 新消息角标基数错");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 
         g_clearedApps = [[NSMutableSet alloc] init];
         g_clearedAt   = [[NSMutableDictionary alloc] init];
         g_containers  = [[NSMutableDictionary alloc] init];
+        // ★★ v0.9.5：见 purge_stale_containers 注释
+        g_containerWriteAt = [[NSMutableDictionary alloc] init];
+        g_lastVAt          = [[NSMutableDictionary alloc] init];
+        g_vWritePaired     = [[NSMutableSet alloc] init];
 
         dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
 

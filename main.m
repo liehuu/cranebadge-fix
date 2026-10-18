@@ -361,11 +361,15 @@ __attribute__((constructor)) static void CBFInit(void) {
         // CraneSB 与本 dylib 同为 SpringBoard 注入，加载顺序不保证，做重试
         dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
         const double delays[] = { 0.0, 0.5, 1.5, 3.0, 6.0 };
-        for (size_t i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delays[i] * NSEC_PER_SEC)), q, ^{
+        size_t nDelays = sizeof(delays) / sizeof(delays[0]);
+        // 注意：block 内不能直接引用数组类型变量（clang: cannot refer to
+        // declaration with an array type inside block），故先把标量取出来再捕获。
+        for (size_t i = 0; i < nDelays; i++) {
+            const double d = delays[i];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(d * NSEC_PER_SEC)), q, ^{
                 if (g_inited) return;
                 if (!locate_crane()) {
-                    NSLog(@"[CraneBadgeFix] 尚未找到 CraneSB，%.1fs 后重试", delays[i] + 1.0);
+                    NSLog(@"[CraneBadgeFix] 尚未找到 CraneSB，%.1fs 后重试", d + 1.0);
                     return;
                 }
                 g_inited = YES;

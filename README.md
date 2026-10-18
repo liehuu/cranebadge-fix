@@ -1,57 +1,73 @@
 # CraneBadgeFix
 
-修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、但快捷菜单仍残留 per-container 未读数」的独立补丁 tweak。
+修复 Crane 1.3.17 多开应用（微信等）「消息已读后、图标角标已消失、但快捷菜单仍残留 per-container 未读数」的独立补丁 tweak。
 
-## ⛔ 当前版本 v0.8（保守安全版）—— 请先读这一段
+## ⛔ 当前版本 v0.8.1（保守安全版）—— 请先读这一段
 
 **v0.7 导致用户手机重启后死机、无法进入系统**（只能关闭插件注入才能开机）。
-v0.8 已把 v0.7 引入的**全部高危代码删除**，只保留此前已在真机验证、从不崩溃的 C 函数层 hook。
+v0.8 起已把 v0.7 引入的**全部高危代码删除**，只保留此前已在真机验证、从不崩溃的 C 函数层 hook。
 
-### 死机根因（已确定）
+### 死机根因（已被实机日志 100% 证实）
+
+日志里 v0.7 打印的这一行是关键证据：
+
+```
+找到 Crane 官方清零 API: -[UIKeyboardCandidateViewStyle crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:]
+```
+
+`UIKeyboardCandidateViewStyle` 是 **UIKitCore 里键盘候选栏的样式类**，跟角标毫无关系——
+Crane 用 category 把自己的 badge 方法挂在上面。v0.7 的代码是：
 
 ```objc
 Class owner = NSClassFromString(g_resetOwnerName);
 ((resetBadge_t)g_imp_reset)(owner, g_sel_reset, cid, appID);
 ```
 
-`crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:`
-是**系统私有类的【实例】方法**，v0.7 却把 `Class` 对象本身当成 `self` 传了进去。
-实例方法会去访问 `self` 的 ivar，而 `Class` 对象的内存布局与实例布局完全不同
-→ **越界访问 → EXC_BAD_ACCESS → SpringBoard 启动即崩溃 → 开不了机**。
+把 `Class` 对象当成 `self` 传进**实例**方法 → 实例方法读一个「键盘样式对象」的 ivar
+当作 badge 存储用 → 越界 → `EXC_BAD_ACCESS` → SpringBoard 启动崩溃 → 开不了机。
 
-v0.6 之所以侥幸没崩，是因为它按镜像过滤、从未找到这个 API；v0.7 去掉过滤后开始找到，
-于是每次 purge 崩一次。
+v0.6 之所以侥幸没崩：它用 `class_getImageName()` 过滤镜像，而 category 方法所在镜像是
+UIKitCore（系统镜像）不是 CraneSB，所以**从未找到该 API**，那行代码一次都没执行。
+v0.7 为了"修好快捷菜单"去掉过滤，直接把它从「不执行」变成「必执行」。
 
-### v0.8 做了什么
+### v0.8.1 修正了什么
 
-| 项目 | v0.7 | v0.8 |
-|---|---|---|
-| 调用 `crane_resetBadge...` | ⛔ 有（死机） | ✅ 已删除 |
-| `class_replaceMethod` 改系统私有类方法表 | ⛔ 有 | ✅ 已删除 |
-| `badgeValueForBundleID:` ObjC hook | ⛔ 有 | ✅ 已删除 |
-| C 函数层 hook（4 个 MSHookFunction） | ✅ 有 | ✅ 保留（唯一已验证路径） |
-| plist 递归深度上限 | ⛔ 无 | ✅ 8 层 |
-| `g_harvested` 并发加锁 | ⛔ 无 | ✅ 有 |
-| 直接重写 `BadgeStore.plist` | ⛔ 有 | ✅ 停用（见下） |
+| 项目 | v0.7 | v0.8 | v0.8.1 |
+|---|---|---|---|
+| 调用 `crane_resetBadge...` | ⛔ 死机 | ✅ 移除 | ✅ 移除 |
+| `class_replaceMethod` 改系统类方法表 | ⛔ 有 | ✅ 移除 | ✅ 移除 |
+| C 函数层 hook（4 个 MSHookFunction） | ✅ | ✅ | ✅ |
+| plist 递归深度上限 | ⛔ 无 | ✅ 8 层 | ✅ |
+| 并发字典加锁 | ⛔ 无 | ✅ | ✅ |
+| 停用直接重写 BadgeStore.plist | ⛔ 有 | ✅ 停用 | ✅ |
+| **镜像定位 `__TEXT` 过滤** | — | ⛔ **误杀目标** | ✅ 降级为诊断 |
+| **重试窗口** | 5 次/7 秒 | 5 次/7 秒 | ✅ 20 秒密集 + 300 秒稀疏 |
+| **初始化权原子化** | — | — | ✅ 防重复 hook |
+
+### ⚠️ v0.8 曾在真机完全失效（已修）
+
+v0.8 首次实机日志：
+
+```
+[22:58:27] ==== CraneBadgeFix v0.8 加载 ====
+[22:58:28] 跳过无 __TEXT 的镜像: .../.jbroot-9AB6CCDA0F9265C2/.../CraneSB.dylib
+[22:58:28] 尚未找到 CraneSB，1.5s 后重试
+...（5 次全失败，4 个 hook 一个都没挂上）
+```
+
+原因：**RootHide 会改写 dylib 的 header / load commands**，dyld 返回的 mach_header
+与标准预期不符，遍历 `ncmds` 找不到 `__TEXT`。但这个镜像**就是正确的 CraneSB**
+（v0.4~v0.6 实机连续验证成功）。→ 已把该检查**降级为纯诊断日志**，
+过滤条件只保留「路径以 `.dylib` 结尾」（能可靠排除资源 bundle，且不依赖 header 内容）。
 
 ### ⚠️ 装之前请注意
 
 - **如果设备上还装着 v0.7，请先关闭插件注入或卸载 `com.82flex.cranebadgefix`**，
   不要在未确认安全前反复重启。
-- v0.8 是**保守版**：图标角标清零能力与 v0.6 相同（已验证有效），
-  **快捷菜单的深层修复暂缓**。宁可少修，不可再崩。
-- 安装后**不会自动重启 SpringBoard**（`postinst` 已移除 `killall`），需你手动重启一次。
-
-### 为什么停用「直接重写 BadgeStore.plist」
-
-v0.6/v0.7 曾每 3 秒把整个 plist 的 `NSNumber` 全压 0。静态审查发现两个问题：
-
-1. **数据破坏**：递归压 0 不区分字段，若 plist 里还存了别的数值配置会被一并抹掉。
-2. **竞争风险**：`atomically:YES` 重写整个文件，若此刻 Crane 正在读写同一 plist，
-   会造成「Crane 内存缓存」与「磁盘内容」不一致。
-
-v0.8 改为**一律通过 Crane 自己的 C 函数** `orig_SetContainerCount(app, cid, 0)` 清零——
-由 Crane 自己负责持久化，内存与磁盘天然一致，且精确到单个容器。
+- v0.8.1 是**保守版**：图标角标清零能力与 v0.6 相同（已验证有效），
+  **快捷菜单的深层修复仍未做**。宁可少修，不可再崩。
+- 安装后**不会自动重启 SpringBoard**（`postinst` 无 `killall`），需你手动重启一次。
+- 定位失败时补丁会**持续重试到 5 分钟**，无需反复重启手机。
 
 ## 📄 怎么看日志（v0.5 起）
 
@@ -73,17 +89,25 @@ v0.8 改为**一律通过 Crane 自己的 C 函数** `orig_SetContainerCount(app
 
 `postinst` 每次安装都会清空旧日志，所以装完重启后取到的就是这一次的完整日志。
 
-日志里最关键的几行（v0.8）：
+**正常的日志长这样**（看到这 5 行就成了）：
+
 ```
-==== CraneBadgeFix v0.8 加载（保守安全版，仅 C 函数层 hook）====
+==== CraneBadgeFix v0.8.1 加载（保守安全版，仅 C 函数层 hook）====
+候选镜像: ...CraneSB.dylib  magic=0xfeedfacf ncmds=20 __TEXT=1
 找到 CraneSB: ...CraneSB.dylib  slide=0x...  arch=arm64e
-已 hook(C) _badgeCountStoreGetContainerCount @0x...     ← C 层 hook 是否挂上
-已 hook(C) _badgeCountStoreSetContainerCount @0x...
-已 hook(C) _badgeCountStoreGetAppCount @0x...
-已 hook(C) _privSetBadgeNumberHook @0x...
-初始化完成（仅 C 函数层 hook）。日志路径 ...
+已 hook(C) _badgeCountStoreGetContainerCount @0x... (slide+0x6acc)
+已 hook(C) _badgeCountStoreSetContainerCount @0x... (slide+0x6f54)
+已 hook(C) _badgeCountStoreGetAppCount       @0x... (slide+0x6c4c)
+已 hook(C) _privSetBadgeNumberHook           @0x... (slide+0x7c5c)
+初始化完成（仅 C 函数层 hook）。
+进入启动清零模式 30 秒
+```
+
+其他关键行：
+```
 BadgeStore 探测 ... : exists=1 size=... plist=dict    ← plist 是否读到
-从 plist 发现残留: app=... cid=... count=...           ← 扫到的历史残留
+从 plist 发现残留: app=... cid=... count=...          ← 扫到的历史残留
+purge 完成 app=com.tencent.xin 容器数=N                ← 清零生效
 _privSetBadgeNumberHook 被调用 badgeNumber=0 app=...  ← 微信清角标信号
 ```
 

@@ -13,11 +13,25 @@ CraneBadgeFix deb 打包器（零依赖，Python 标准库）。
 import io, os, sys, tarfile, plistlib
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT  = os.path.join(ROOT, "out", "com.82flex.cranebadgefix_0.2.0_iphoneos-arm64e.deb")
 DYLIB = os.path.join(ROOT, "out", "CraneBadgeFix.dylib")
 PLIST = os.path.join(ROOT, "CraneBadgeFix.plist")
 CONTROL = os.path.join(ROOT, "control")
 POSTINST = os.path.join(ROOT, "postinst")
+
+
+def control_field(field):
+    """从 control 读取字段值（避免版本号/架构硬编码漂移）。"""
+    with open(CONTROL, "rb") as f:
+        raw = f.read().decode("utf-8", "replace")
+    for line in raw.splitlines():
+        if line.lower().startswith(field.lower() + ":"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+VERSION = control_field("Version") or "0.0.0"
+ARCH = control_field("Architecture") or "iphoneos-arm64e"
+OUT = os.path.join(ROOT, "out", f"com.82flex.cranebadgefix_{VERSION}_{ARCH}.deb")
 
 
 def tar_gz(entries, mode=0o644):

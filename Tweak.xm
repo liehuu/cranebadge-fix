@@ -55,8 +55,8 @@ static char* find_image(const char *needle) {
 
 static void* rep_SetContainerCount(void* self, const char* containerID, uint64_t count) {
     if (self != NULL) {
-        const char *cls = object_getClassName((id)self);
-        plog(@"SetContainerCount self=%@(%s) container=%s count=%llu",
+        const char *cls = object_getClassName((__bridge id)self);
+        plog(@"SetContainerCount self=%p(%s) container=%s count=%llu",
              self, cls ? cls : "?", containerID ? containerID : "nil",
              (unsigned long long)count);
     }
@@ -72,8 +72,8 @@ static void* rep_SetContainerCount(void* self, const char* containerID, uint64_t
 
 static void* rep_UpdateBadge(void* self, uint64_t appID) {
     if (self != NULL) {
-        const char *cls = object_getClassName((id)self);
-        plog(@"UpdateBadge self=%@(%s) appID=%llu",
+        const char *cls = object_getClassName((__bridge id)self);
+        plog(@"UpdateBadge self=%p(%s) appID=%llu",
              self, cls ? cls : "?", (unsigned long long)appID);
     }
     return orig_UpdateBadge(self, appID);

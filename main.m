@@ -1,8 +1,32 @@
 /*
- * CraneBadgeFix v0.7
- * ===================
+ * CraneBadgeFix v0.8（保守安全版）
+ * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
+ *
+ * ── ⛔ v0.8 安全声明（最重要，请先读这段）─────────────────────────
+ * v0.7 引入了 ObjC 运行时操作，导致**用户手机重启后死机、无法进入系统**
+ * （只能关闭插件注入才能开机）。根因已定位且确定：
+ *
+ *   Class owner = NSClassFromString(g_resetOwnerName);
+ *   ((resetBadge_t)g_imp_reset)(owner, g_sel_reset, cid, appID);
+ *
+ * `crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:`
+ * 是**系统私有类的【实例】方法**，v0.7 却把 `Class` 对象本身当成 `self` 传了进去。
+ * 实例方法会去访问 self 的 ivar，而 Class 对象的内存布局与实例布局完全不同
+ * → 越界访问 → EXC_BAD_ACCESS → SpringBoard 启动即崩溃 → 开不了机。
+ *
+ * （v0.6 没崩是因为它按镜像过滤、从未找到这个 API；v0.7 去掉过滤后开始找到，
+ *   于是每次 purge 崩一次。）
+ *
+ * v0.8 决策：**删除全部未经验证的 ObjC 运行时操作**
+ *   - 删除 crane_resetBadge... API 探测与调用
+ *   - 删除 badgeValueForBundleID: / setBadgeValue:forBundleID: 的 class_replaceMethod
+ * 只保留 v0.4/v0.5/v0.6 已在真机实机验证、且从未导致崩溃的 **C 函数层 hook**。
+ * 另外给所有递归加了深度上限，防止 plist 异常时栈溢出。
+ *
+ * ⚠️ v0.8 是**保守版**：图标角标清零能力与 v0.6 相同（已验证有效），
+ *    快捷菜单的深层修复暂缓——宁可少修，不可再崩。
  *
  * ── 根因（CraneSB.dylib 1.3.17 arm64e 反汇编确认）──────────────────
  *   - 图标角标 = _badgeCountStoreGetAppCount(appID, 1)：遍历容器求和。
@@ -23,20 +47,11 @@
  * ── v0.3 失效根因 ──────────────────────────────────────────────────
  *   CraneSB 的 LC_DYLD_EXPORTS_TRIE 不含 badge 相关符号（在 symtab 但未导出），
  *   dlsym 全返回 NULL，hook 从未挂上。
- * ── v0.4 改用 slide+vmaddr 直接对地址下钩（本次实测：图标角标已清零，
- *    说明 hook 生效；但快捷菜单仍显示 → 说明还有 ObjC 层的读取出口未覆盖）。
- * ── v0.5 三管齐下 ──────────────────────────────────────────────────
- *   A. slide+vmaddr 对地址下钩（C 函数层，覆盖上述 5 处调用点）
- *   B. ObjC runtime 动态 hook：定位 Crane 挂在系统类上的
- *      -badgeValueForBundleID: / -setBadgeValue:forBundleID:
- *      （这两个是快捷菜单角标的直接数据源，且**可通过 objc_getClass +
- *      class_getInstanceMethod 精确定位**，无需解析 chained fixups）
- *   C. 调用 Crane 自带的官方清零 API
- *      -crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:
- *      真正删除 BadgeStore 条目
- *   D. **日志落盘**到 /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log
- *      （也可在 /var/mobile/... ），手机端用「文稿/文本编辑器」或
- *      SSH `cat` 即可查看，postinst 会把路径 NSLog 出来。
+ * ── v0.4 改用 slide+vmaddr 直接对地址下钩（实测：图标角标已清零，
+ *    4 个 C hook 全部挂上，日志有据；但快捷菜单仍显示）。
+ * ── v0.5 修日志落盘（v0.5 前每次写日志都清空文件，只剩最后一行）。
+ * ── v0.6 修「启动清零吞掉真实新消息」+ 递归式 plist 自适应解析。
+ * ── v0.7 引入 ObjC 运行时操作 → 死机。v0.8 全部回退。
  *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
@@ -157,22 +172,69 @@ static const crane_offs_t kOffArm64  = { 0x6734, 0x6b34, 0x689c, 0x6590, 0x7774 
 
 static const crane_offs_t *cur_offs(void) { return g_arm64e ? &kOffArm64e : &kOffArm64; }
 
-static BOOL locate_crane(void) {
-    uint32_t n = _dyld_image_count();
-    for (uint32_t i = 0; i < n; i++) {
-        const char *name = _dyld_get_image_name(i);
-        if (!name || !strstr(name, "CraneSB")) continue;
-        g_slide = (uintptr_t)_dyld_get_image_vmaddr_slide(i);
-        const struct mach_header *mh = _dyld_get_image_header(i);
-        if (mh && mh->magic == MH_MAGIC_64) {
-            g_arm64e = ((mh->cpusubtype & 0x00FFFFFFu) == 2);  // CPU_SUBTYPE_ARM64E
-        }
-        g_cranePath = name;
-        CBFLog(@"找到 CraneSB: %s  slide=%p  arch=%s", name, (void *)g_slide,
-               g_arm64e ? "arm64e" : "arm64");
-        return YES;
+// ★ v0.8 加严镜像匹配。
+// 风险：原来只 strstr(name, "CraneSB")，若先匹配到 Crane 的**资源 bundle**
+//（也可能叫 CraneSB.xxx 且不是 dylib），slide 与 cpusubtype 都会取错
+//   → hook 到错误地址 → 跳进垃圾代码 → SpringBoard 秒崩。
+// 现在要求：① 路径以 .dylib 结尾（排除 bundle/资源）；② Mach-O magic 正确；
+// ③ 有 __TEXT 段；④ arm64e 分片优先（RootHide A12+ 必为 arm64e）。
+static BOOL image_looks_like_cranesb(const char *name) {
+    if (!name) return NO;
+    size_t n = strlen(name);
+    if (n < 9) return NO;                                   // 至少 "CraneSB.dylib"
+    if (strcmp(name + n - 6, ".dylib") != 0) return NO;    // 必须 .dylib 结尾
+    if (!strstr(name, "CraneSB")) return NO;
+    return YES;
+}
+
+// 校验镜像确实含可执行代码（__TEXT），避免匹配到无代码的占位镜像
+static BOOL image_has_text(const struct mach_header *mh) {
+    if (!mh || mh->magic != MH_MAGIC_64) return NO;
+    const struct load_command *lc = (const struct load_command *)(mh + 1);
+    for (uint32_t i = 0; i < mh->ncmds; i++) {
+        if (lc->cmd == LC_SEGMENT_64 && strcmp(lc->segname, "__TEXT") == 0) return YES;
+        lc = (const struct load_command *)((const char *)lc + lc->cmdsize);
     }
     return NO;
+}
+
+static BOOL locate_crane(void) {
+    uint32_t n = _dyld_image_count();
+    BOOL foundAny = NO;
+    uintptr_t bestSlide = 0; BOOL bestIsE = NO;
+    const char *bestName = NULL;
+
+    for (uint32_t i = 0; i < n; i++) {
+        const char *name = _dyld_get_image_name(i);
+        if (!image_looks_like_cranesb(name)) continue;
+
+        const struct mach_header *mh = _dyld_get_image_header(i);
+        if (!image_has_text(mh)) {
+            CBFLog(@"跳过无 __TEXT 的镜像: %s", name);
+            continue;
+        }
+        BOOL isE = ((mh->cpusubtype & 0x00FFFFFFu) == 2);   // CPU_SUBTYPE_ARM64E
+        if (!foundAny) {
+            // 第一个合法候选先占位
+            foundAny = YES;
+            bestSlide = (uintptr_t)_dyld_get_image_vmaddr_slide(i);
+            bestIsE = isE;
+            bestName = name;
+        }
+        if (isE && !bestIsE) {   // arm64e 分片优先
+            bestSlide = (uintptr_t)_dyld_get_image_vmaddr_slide(i);
+            bestIsE = isE;
+            bestName = name;
+        }
+    }
+
+    if (!foundAny) return NO;
+    g_slide = bestSlide;
+    g_arm64e = bestIsE;
+    g_cranePath = bestName;
+    CBFLog(@"找到 CraneSB: %s  slide=%p  arch=%s", bestName, (void *)g_slide,
+           bestIsE ? "arm64e" : "arm64");
+    return YES;
 }
 
 static void *crane_fn(uintptr_t off) {
@@ -234,68 +296,37 @@ static void remember_container(id appID, id containerID) {
     pthread_mutex_unlock(&g_lock);
 }
 
-#pragma mark - Crane 官方清零 API（ObjC runtime 动态定位）
-
-// - (void)crane_resetBadgeOfContainerWithIdentifier:(NSString*)cid
-//                     ofApplicationWithIdentifier:(NSString*)aid
+#pragma mark - ⛔ 已移除：Crane 官方 crane_resetBadge... API 调用
 //
-// ⚠️ 定位要点（v0.6 实测日志证实的坑）：
-//   Crane 是用 **category** 把这些 crane_* 方法挂到**系统私有类**上的，
-//   而 `class_getImageName()` 返回的是**方法所在的镜像**（SpringBoard /
-//   CoreUI / SBUserNotifications…），**不是 CraneSB**。
-//   所以 v0.5/v0.6 里 `if (!strstr(imgName, "CraneSB")) continue;`
-//   会把真正的 owner 全部过滤掉 → 日志一直是「未找到 crane_resetBadge... API」。
-//   正确做法：selector 名本身已是 Crane 独有的（crane_ 前缀 / badgeValueForBundleID:），
-//   可以安全地在**全量类**里匹配，不必再按镜像过滤。
-static NSString *g_resetOwnerName = nil;
-static SEL  g_sel_reset = NULL;
-static IMP  g_imp_reset = NULL;
-static BOOL g_resetSearchDone = NO;
+// 原实现（v0.5~v0.7）用 ObjC runtime 定位
+//   -crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:
+// 然后 `((resetBadge_t)g_imp_reset)(ownerClass, sel, cid, appID)` 调用它。
+//
+// 这是**导致 v0.7 死机开不了机的直接原因**，因为：
+//   1) 该方法是系统私有类的【实例】方法，却被传入 Class 对象当 self，
+//      实例方法访问 self 的 ivar 时内存布局完全不匹配 → EXC_BAD_ACCESS；
+//   2) 即使 self 传对了，也无法凭空构造出那个系统类的实例；
+//   3) 该 owner 类由 Crane 在运行时动态加 category 创建，时机不可控。
+//
+// v0.8 起本段代码**整体删除**，不再有任何 ObjC 方法调用。
+// 若日后要恢复，必须先在真机上单独验证「能否取得合法实例」，绝不能盲调。
 
-static void discover_reset_api(void) {
-    if (g_imp_reset || g_resetSearchDone) return;
-    g_sel_reset = sel_registerName("crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:");
-    if (!g_sel_reset) { g_resetSearchDone = YES; return; }
 
-    int count = objc_getClassList(NULL, 0);
-    if (count <= 0) { g_resetSearchDone = YES; return; }
-    Class *classes = (Class *)calloc((size_t)count, sizeof(Class));
-    if (!classes) { g_resetSearchDone = YES; return; }
-    count = objc_getClassList(classes, count);
-
-    // 优先命中 crane_ 前缀的 owner；记录命中的镜像名便于排查
-    for (int i = 0; i < count; i++) {
-        Class c = classes[i];
-        if (!c) continue;
-        Method m = class_getInstanceMethod(c, g_sel_reset);
-        if (!m) continue;
-        g_imp_reset = method_getImplementation(m);
-        g_resetOwnerName = NSStringFromClass(c);
-        const char *img = class_getImageName(c);
-        CBFLog(@"找到 Crane 官方清零 API: -[%@ crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:] IMP=%p (owner 镜像: %s)",
-               g_resetOwnerName, (void *)g_imp_reset, img ? img : "?");
-        break;
-    }
-    free(classes);
-    g_resetSearchDone = YES;
-    if (!g_imp_reset) {
-        CBFLog(@"未在任何类中找到 crane_resetBadge... API（将只用 C 函数路径）");
-    }
-}
-
-typedef void (*resetBadge_t)(id self, SEL _cmd, id containerID, id appID);
+// ════════════════════════════════════════════════════════════════════
+// ⛔ v0.8 安全底线（完整根因分析见文件头）
+// ════════════════════════════════════════════════════════════════════
+// 死机根因：把 Class 对象当 self 传给系统私有类的**实例**方法
+//          → ivar 越界 → EXC_BAD_ACCESS → SpringBoard 起不来。
+// v0.6 因按镜像过滤从未找到该 API 而侥幸不崩；v0.7 去掉过滤后开始执行 → 必崩。
+//
+// → 本版本**只**使用 MSHookFunction 对 C 函数下钩（改代码，不动方法表），
+//   这是 v0.4/v0.5/v0.6 已实机验证、从不崩溃的唯一路径。宁可少修，不可再崩。
+// ════════════════════════════════════════════════════════════════════
 
 // 清掉**指定**的单个容器（精确到 cid），不牵连该 app 的其他容器。
-// v0.6 实测教训：purge_containers(appID) 会清掉 g_containers[appID] 下
-// **所有**容器，而 g_containers 里已经混入了「启动后新消息」的容器，
-// 会把用户新收到的未读一并清掉。
+// ⚠️ 这里**只**用 C 函数回写 0，**绝不**调用任何 ObjC 方法。
 static void purge_one(id appID, id cid) {
     if (!is_string(appID) || !is_string(cid)) return;
-    if (!g_imp_reset) discover_reset_api();
-    if (g_imp_reset && g_resetOwnerName) {
-        Class owner = NSClassFromString(g_resetOwnerName);
-        if (owner) ((resetBadge_t)g_imp_reset)(owner, g_sel_reset, cid, appID);
-    }
     if (orig_SetContainerCount) orig_SetContainerCount(appID, cid, 0);
 }
 
@@ -307,34 +338,26 @@ static void purge_containers(id appID) {
     if (!cids.count) return;
 
     for (id cid in cids) purge_one(appID, cid);
-
-    if (g_imp_reset) {
-        CBFLog(@"已用 Crane 官方 reset API 清空 %@ 的 %lu 个容器",
-               appID, (unsigned long)cids.count);
-    }
-    CBFLog(@"purge 完成 app=%@ 容器数=%lu%s", appID, (unsigned long)cids.count,
-           g_imp_reset ? @"（含官方 API）" : @"（仅 C 函数回写，官方 API 未找到）");
+    CBFLog(@"purge 完成 app=%@ 容器数=%lu", appID, (unsigned long)cids.count);
 }
 
-#pragma mark - BadgeStore.plist 存量清零
+#pragma mark - BadgeStore.plist 读取（⛔ v0.8 起只读，不再回写）
 
-// 递归清零：把字典/数组里所有 NSNumber 压成 0
-static id scrub_value(id v) {
-    if ([v isKindOfClass:[NSNumber class]]) return @0;
-    if ([v isKindOfClass:[NSDictionary class]]) {
-        NSDictionary *src = (NSDictionary *)v;
-        NSMutableDictionary *m = [NSMutableDictionary dictionaryWithCapacity:src.count];
-        for (id k in src) m[k] = scrub_value(src[k]);
-        return m;
-    }
-    if ([v isKindOfClass:[NSArray class]]) {
-        NSArray *src = (NSArray *)v;
-        NSMutableArray *a = [NSMutableArray arrayWithCapacity:src.count];
-        for (id e in src) [a addObject:scrub_value(e)];
-        return a;
-    }
-    return v;
-}
+// ── v0.8 停用：直接重写 BadgeStore.plist 的 scrub_plist / scrub_value ──────
+//
+// v0.6/v0.7 曾在清零模式里每 3 秒把整个 BadgeStore.plist 的 NSNumber 全压 0。
+// 静态审查发现两个必须停用的理由：
+//   1) **数据破坏**：递归压 0 不区分字段，若 plist 里还存了别的数值配置
+//      （缩放、动画序号、版本号等），会被一并抹掉且不可恢复。
+//   2) **竞争风险**：atomically:YES 会重写整个文件，若此刻 Crane 正在
+//      读/写同一个 plist，会出现「Crane 内存缓存」与「磁盘内容」不一致，
+//      Crane 下次保存会把我们的修改覆盖回去，甚至写坏 plist。
+//
+// 替代方案（更安全且更符合原意）：清零一律**通过 Crane 自己的 C 函数**
+// orig_SetContainerCount(app, cid, 0) 完成 —— 由 Crane 自己负责持久化，
+// 内存缓存与磁盘天然一致，且精确到单个容器，不误伤其他字段。
+//
+// → 相关代码已全部删除。plist 现在只被**读取**用于诊断与枚举残留。
 
 // plist 读取 + 诊断（v0.6 实测：harvest_from_plist 一行都没输出，
 // 说明 dictionaryWithContentsOfFile: 返回了 nil，必须先查清为何读不到）
@@ -353,17 +376,13 @@ static NSDictionary *load_badge_store(NSString *p) {
     return [obj isKindOfClass:[NSDictionary class]] ? obj : nil;
 }
 
-static void scrub_plist(void) {
-    for (NSString *p in badge_store_paths()) {
-        NSDictionary *d = load_badge_store(p);
-        if (!d) continue;
-        NSDictionary *clean = scrub_value(d);
-        if ([clean writeToFile:p atomically:YES])
-            CBFLog(@"已递归清零 BadgeStore.plist: %@ (顶层 %lu 个 key)", p, (unsigned long)d.count);
-    }
-}
-
 #pragma mark - 启动清零模式
+
+// v0.8 安全加固：plist 遍历的**递归深度上限**。
+// plist 由 Crane 写入，若出现自引用/异常深的嵌套，无上限递归会耗尽栈
+//   → EXC_BAD_ACCESS → SpringBoard 崩溃（与 v0.7 死机同类风险）。
+// 实际嵌套只有 2~4 层，8 层上限已远远够用。
+#define SCRUB_MAX_DEPTH 8
 
 // v0.4/v0.5 的清零模式只「守株待兔」等 SetContainerCount 被调用，
 // 但 Crane 从 plist 恢复计数可能发生在 hook 装上之前，或走
@@ -417,9 +436,33 @@ static BOOL looks_like_container_id(NSString *s) {
 }
 
 static NSString *g_curAppID = nil;
-static NSMutableDictionary *g_harvested = nil;   // "appID|cid" -> nil
+static NSMutableDictionary *g_harvested = nil;   // "appID|cid" -> @YES
+static pthread_mutex_t g_harvestLock = PTHREAD_MUTEX_INITIALIZER;
 
-static void walk_plist(id node, NSString *curApp, NSString *curCID) {
+// v0.8 安全加固（并发崩溃）：schedule_zero_mode 在 30 秒内往**同一个 global
+// concurrent queue** 排了 11 个 dispatch_after 块，它们**可能并行执行**。
+// v0.6/v0.7 中 g_harvested 是裸 NSMutableDictionary 并发读写
+//   → NSMutableDictionary 非线程安全 → 偶发 EXC_BAD_ACCESS（同样是 SpringBoard 崩溃）。
+// 现所有读写都在 g_harvestLock 下完成，且判重移入锁内，避免重复登记。
+static BOOL harvest_claim(NSString *appID, NSString *cid) {
+    NSString *pair = [NSString stringWithFormat:@"%@|%@", appID, cid];
+    pthread_mutex_lock(&g_harvestLock);
+    BOOL isNew = (g_harvested[pair] == nil);
+    if (isNew) g_harvested[pair] = @YES;
+    pthread_mutex_unlock(&g_harvestLock);
+    return isNew;
+}
+
+static unsigned long harvest_count(void) {
+    pthread_mutex_lock(&g_harvestLock);
+    unsigned long n = (unsigned long)g_harvested.count;
+    pthread_mutex_unlock(&g_harvestLock);
+    return n;
+}
+
+// v0.8 安全加固：深度上限（与 scrub_value 同理，防止栈溢出崩溃）
+static void walk_plist_depth(id node, NSString *curApp, NSString *curCID, int depth) {
+    if (depth > SCRUB_MAX_DEPTH) return;            // 超深：直接剪枝
     if ([node isKindOfClass:[NSDictionary class]]) {
         NSDictionary *d = (NSDictionary *)node;
         for (id k in d) {
@@ -428,26 +471,36 @@ static void walk_plist(id node, NSString *curApp, NSString *curCID) {
             NSString *nApp = curApp, *nCID = curCID;
             if (key && looks_like_bundle_id(key))       { nApp = key; nCID = nil; }
             else if (key && looks_like_container_id(key)) { nCID = key; }
-            walk_plist(v, nApp, nCID);
+            walk_plist_depth(v, nApp, nCID, depth + 1);
         }
     } else if ([node isKindOfClass:[NSArray class]]) {
         // 数组：元素若是字典则继承当前上下文
-        for (id e in (NSArray *)node) walk_plist(e, curApp, curCID);
+        for (id e in (NSArray *)node) walk_plist_depth(e, curApp, curCID, depth + 1);
     } else if ([node isKindOfClass:[NSNumber class]]) {
         long long n = [(NSNumber *)node longLongValue];
         if (n != 0 && curApp && curCID) {
-            NSString *pair = [NSString stringWithFormat:@"%@|%@", curApp, curCID];
-            if (![g_harvested[pair] boolValue]) {
-                g_harvested[pair] = @YES;
+            if (harvest_claim(curApp, curCID)) {
                 remember_container(curApp, curCID);
                 CBFLog(@"从 plist 发现残留: app=%@ cid=%@ count=%lld", curApp, curCID, n);
             }
         }
     }
 }
+static void walk_plist(id node, NSString *curApp, NSString *curCID) {
+    walk_plist_depth(node, curApp, curCID, 0);
+}
+
+// v0.8 安全加固：g_harvested 的创建也要在锁内 + dispatch_once，
+// 避免两个并行的 harvest_from_plist 同时赋值。
+static void harvest_init_once(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        g_harvested = [NSMutableDictionary dictionary];
+    });
+}
 
 static void harvest_from_plist(void) {
-    if (!g_harvested) g_harvested = [NSMutableDictionary dictionary];
+    harvest_init_once();
     for (NSString *p in badge_store_paths()) {
         NSDictionary *d = load_badge_store(p);
         if (!d) continue;
@@ -459,9 +512,17 @@ static void harvest_from_plist(void) {
 // v0.6 实测教训：原来 purge_all_known() 直接遍历 g_containers，
 // 而 g_containers 会被 rep_GetContainerCount 不断填入「新消息容器」，
 // 导致用户开机后新到的未读被清掉（日志里 count=1/2/3 被依次吞掉）。
+//
+// v0.8 安全加固：遍历 g_harvested 时先在锁内**快照**出 pair 数组，
+// 再在锁外 purge —— 避免持锁期间调用 orig_SetContainerCount
+// （那是 Crane 自己的函数，可能回调我们的 rep_SetContainerCount → 再次抢锁 → 死锁）。
 static void purge_harvested_only(void) {
-    if (!g_harvested.count) return;
-    for (NSString *pair in g_harvested) {
+    pthread_mutex_lock(&g_harvestLock);
+    NSArray *pairs = [g_harvested allKeys];
+    pthread_mutex_unlock(&g_harvestLock);
+    if (!pairs.count) return;
+
+    for (NSString *pair in pairs) {
         NSArray *kv = [pair componentsSeparatedByString:@"|"];
         if (kv.count != 2) continue;
         purge_one(kv[0], kv[1]);   // 精确到单个容器，不碰该 app 的其他容器
@@ -474,20 +535,18 @@ static void schedule_zero_mode(void) {
 
     // 第 0 轮：先把 plist 里的历史残留登记进 g_harvested
     harvest_from_plist();
-    CBFLog(@"启动清零：plist 历史残留 %lu 个 (app,cid) 组合", (unsigned long)g_harvested.count);
+    CBFLog(@"启动清零：plist 历史残留 %lu 个 (app,cid) 组合", harvest_count());
 
     dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
     for (int i = 0; i < ZERO_MODE_SECONDS / 3; i++) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 3.0 * NSEC_PER_SEC)), q, ^{
             if (!g_zeroMode) return;
             harvest_from_plist();      // 随时抓 Crane 又写回去的历史残留
-            scrub_plist();             // 直接把 plist 数字压 0
             purge_harvested_only();    // 只清历史残留，不碰新消息
         });
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ZERO_MODE_SECONDS * NSEC_PER_SEC)), q, ^{
         harvest_from_plist();
-        scrub_plist();
         purge_harvested_only();
         g_zeroMode = NO;
         CBFLog(@"启动清零模式结束，已恢复正常计数");
@@ -544,97 +603,24 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
     if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
 }
 
-#pragma mark - ObjC runtime 动态 hook（v0.5 新增，覆盖快捷菜单的 ObjC 层出口）
+#pragma mark - ⛔ 已移除：ObjC 方法层 hook（badgeValueForBundleID: 等）
+//
+// v0.5~v0.7 曾尝试 hook：
+//   -badgeValueForBundleID: / -setBadgeValue:forBundleID:
+// 并调用 class_replaceMethod() 改写系统私有类的方法表。
+//
+// 判定为**高危**并在 v0.8 全部移除，原因：
+//   1) 这两个方法的 owner 是**系统私有类**，Crane 用 category 动态添加；
+//      owner 类何时创建、何时被替换都不确定；
+//   2) class_replaceMethod() 会**永久改写该类的方法表**，影响面不限于 Crane，
+//      一旦命中判断错误（例如同名 selector 属于系统原生实现），
+//      就会破坏 SpringBoard 自身逻辑 → 启动崩溃；
+//   3) 实机日志显示 Crane 实际是通过 C 函数
+//      (_badgeCountStoreGetContainerCount / GetAppCount) 走角标逻辑，
+//      ObjC 这层 hook 的**边际收益远小于风险**。
+//
+// 结论：只保留 C 函数层 hook（已在 v0.4/v0.5/v0.6 实机验证不崩）。
 
-// - (id)badgeValueForBundleID:   —— 快捷菜单角标的直接数据源
-static id (*orig_badgeValueForBundleID)(id, SEL, id) = NULL;
-static void (*orig_setBadgeValueForBundleID)(id, SEL, id, id) = NULL;
-
-static id rep_badgeValueForBundleID(id self, SEL _cmd, id bundleID) {
-    id v = orig_badgeValueForBundleID ? orig_badgeValueForBundleID(self, _cmd, bundleID) : nil;
-    long long n = 0;
-    if (v && [v respondsToSelector:@selector(longLongValue)]) n = [v longLongValue];
-    CBFLog(@"[badgeValueForBundleID:] app=%@ value=%lld", bundleID, n);
-    if (n > 0 && (g_zeroMode || is_cleared(bundleID))) {
-        CBFLog(@"  -> 抑制返回（已清零 app）");
-        return @0;
-    }
-    return v;
-}
-
-static void rep_setBadgeValueForBundleID(id self, SEL _cmd, id value, id bundleID) {
-    long long n = 0;
-    if (value && [value respondsToSelector:@selector(longLongValue)]) n = [value longLongValue];
-    CBFLog(@"[setBadgeValue:forBundleID:] app=%@ value=%lld", bundleID, n);
-    if (g_zeroMode && n > 0) {
-        CBFLog(@"  -> 清零模式压成 0");
-        value = @0;
-    }
-    if (orig_setBadgeValueForBundleID) orig_setBadgeValueForBundleID(self, _cmd, value, bundleID);
-}
-
-// 在全量类里找实现指定 selector 的 owner 并下钩。
-// ⚠️ 不可按镜像过滤：Crane 用 category 把这些方法挂在**系统私有类**上，
-//    class_getImageName() 返回的是系统镜像名而非 CraneSB
-//    （v0.6 实测日志：一直打印「未找到实现 badgeValueForBundleID: 的 CraneSB 类」）。
-//    selector 名本身已是 Crane 独有，全量匹配是安全的。
-// 另外：hook 完必须调 class_addMethod 让 ObjC 侧 dispatch 也走新实现，
-//    因为 CraneSB 内部是通过 objc_msgSend 调这些方法的。
-// 注意：ARC 下不能把全局 NSString* 的地址作为 __autoreleasing 出参写回
-//   （error: passing address of non-local object to __autoreleasing parameter
-//    for write-back），所以 owner 只记日志，不往外部回写。
-static Class g_badgeValueOwnerCls = NULL;
-static Class g_setBadgeValueOwnerCls = NULL;
-
-static void hook_objc_selector(const char *selName, const char *label,
-                               void *replacement, void **origOut, Class *ownerOut) {
-    SEL sel = sel_registerName(selName);
-    if (!sel) return;
-    MSHookFunction_t hooker = pMSHookFunction;
-    if (!hooker) return;
-    int count = objc_getClassList(NULL, 0);
-    if (count <= 0) return;
-    Class *classes = (Class *)calloc((size_t)count, sizeof(Class));
-    if (!classes) return;
-    count = objc_getClassList(classes, count);
-    int found = 0;
-    for (int i = 0; i < count; i++) {
-        Class c = classes[i];
-        if (!c) continue;
-        Method m = class_getInstanceMethod(c, sel);
-        if (!m) continue;
-        IMP imp = method_getImplementation(m);
-        if (!imp) continue;
-        memset(origOut, 0, sizeof(void *));
-        hooker((void *)imp, replacement, origOut);
-        if (*origOut) {
-            const char *img = class_getImageName(c);
-            // 关键：把类方法表里指向旧 IMP 的条目换成新 IMP，
-            // 否则 objc_msgSend 仍会跳回原实现（MSHookFunction 只改代码）
-            class_replaceMethod(c, sel, (IMP)replacement, method_getTypeEncoding(m));
-            if (ownerOut) *ownerOut = c;
-            CBFLog(@"已 hook %s -> -[%@ %s] IMP=%p (owner 镜像: %s)%@",
-                   label, NSStringFromClass(c), selName, (void *)imp,
-                   img ? img : "?", found ? " （同 owner 多类别，已一并处理）" : "");
-            found++;
-            if (found >= 4) break;   // 同一 selector 可能被多个类别实现，hook 最早的几个
-        }
-    }
-    free(classes);
-    if (!found) {
-        CBFLog(@"!! 未找到实现 %s 的类（%s）", selName, label);
-    }
-}
-
-static void install_objc_hooks(void) {
-    discover_reset_api();
-    hook_objc_selector("badgeValueForBundleID:", "badgeValueForBundleID",
-                       (void *)rep_badgeValueForBundleID,
-                       (void **)&orig_badgeValueForBundleID, &g_badgeValueOwnerCls);
-    hook_objc_selector("setBadgeValue:forBundleID:", "setBadgeValue:forBundleID:",
-                       (void *)rep_setBadgeValueForBundleID,
-                       (void **)&orig_setBadgeValueForBundleID, &g_setBadgeValueOwnerCls);
-}
 
 #pragma mark - 安装 C 函数 hook
 
@@ -661,15 +647,14 @@ static void install_hooks(void) {
     hook_addr((void **)&orig_GetAppCount,       o->getApp,  "_badgeCountStoreGetAppCount",       (void *)rep_GetAppCount);
     hook_addr((void **)&orig_PrivSetBadge,      o->privSet, "_privSetBadgeNumberHook",          (void *)rep_PrivSetBadge);
 
-    install_objc_hooks();
-
-    CBFLog(@"初始化完成。日志路径 %@", g_logPath);
+    // v0.8：不再调用任何 ObjC 方法（曾导致死机，见文件头安全声明）
+    CBFLog(@"初始化完成（仅 C 函数层 hook）。日志路径 %@", g_logPath);
 }
 
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.6 加载 ====");
+        CBFLog(@"==== CraneBadgeFix v0.8 加载（保守安全版，仅 C 函数层 hook）====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

@@ -2,30 +2,89 @@
 
 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、但快捷菜单仍残留 per-container 未读数」的独立补丁 tweak。
 
+## ⛔ 当前版本 v0.8（保守安全版）—— 请先读这一段
+
+**v0.7 导致用户手机重启后死机、无法进入系统**（只能关闭插件注入才能开机）。
+v0.8 已把 v0.7 引入的**全部高危代码删除**，只保留此前已在真机验证、从不崩溃的 C 函数层 hook。
+
+### 死机根因（已确定）
+
+```objc
+Class owner = NSClassFromString(g_resetOwnerName);
+((resetBadge_t)g_imp_reset)(owner, g_sel_reset, cid, appID);
+```
+
+`crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier:`
+是**系统私有类的【实例】方法**，v0.7 却把 `Class` 对象本身当成 `self` 传了进去。
+实例方法会去访问 `self` 的 ivar，而 `Class` 对象的内存布局与实例布局完全不同
+→ **越界访问 → EXC_BAD_ACCESS → SpringBoard 启动即崩溃 → 开不了机**。
+
+v0.6 之所以侥幸没崩，是因为它按镜像过滤、从未找到这个 API；v0.7 去掉过滤后开始找到，
+于是每次 purge 崩一次。
+
+### v0.8 做了什么
+
+| 项目 | v0.7 | v0.8 |
+|---|---|---|
+| 调用 `crane_resetBadge...` | ⛔ 有（死机） | ✅ 已删除 |
+| `class_replaceMethod` 改系统私有类方法表 | ⛔ 有 | ✅ 已删除 |
+| `badgeValueForBundleID:` ObjC hook | ⛔ 有 | ✅ 已删除 |
+| C 函数层 hook（4 个 MSHookFunction） | ✅ 有 | ✅ 保留（唯一已验证路径） |
+| plist 递归深度上限 | ⛔ 无 | ✅ 8 层 |
+| `g_harvested` 并发加锁 | ⛔ 无 | ✅ 有 |
+| 直接重写 `BadgeStore.plist` | ⛔ 有 | ✅ 停用（见下） |
+
+### ⚠️ 装之前请注意
+
+- **如果设备上还装着 v0.7，请先关闭插件注入或卸载 `com.82flex.cranebadgefix`**，
+  不要在未确认安全前反复重启。
+- v0.8 是**保守版**：图标角标清零能力与 v0.6 相同（已验证有效），
+  **快捷菜单的深层修复暂缓**。宁可少修，不可再崩。
+- 安装后**不会自动重启 SpringBoard**（`postinst` 已移除 `killall`），需你手动重启一次。
+
+### 为什么停用「直接重写 BadgeStore.plist」
+
+v0.6/v0.7 曾每 3 秒把整个 plist 的 `NSNumber` 全压 0。静态审查发现两个问题：
+
+1. **数据破坏**：递归压 0 不区分字段，若 plist 里还存了别的数值配置会被一并抹掉。
+2. **竞争风险**：`atomically:YES` 重写整个文件，若此刻 Crane 正在读写同一 plist，
+   会造成「Crane 内存缓存」与「磁盘内容」不一致。
+
+v0.8 改为**一律通过 Crane 自己的 C 函数** `orig_SetContainerCount(app, cid, 0)` 清零——
+由 Crane 自己负责持久化，内存与磁盘天然一致，且精确到单个容器。
+
 ## 📄 怎么看日志（v0.5 起）
 
 日志**落盘到文件**，不用连电脑：
 
 ```
+/var/mobile/Library/Crane/CraneBadgeFix.log      （RootHide 实测真实路径，优先）
 /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log
-/var/mobile/Library/Crane/CraneBadgeFix.log     （非 RootHide 路径兜底）
-/tmp/CraneBadgeFix.log                          （前两者都失败时）
+/tmp/CraneBadgeFix.log                            （前两者都失败时）
 ```
+
+> 时间戳为**本地时区**（v0.6 起修复；v0.5 及更早用 `[NSDate date]`，恒为 UTC，
+> 会看到 13:47 而手机是 21:47）。
 
 查看方式（任选）：
 - **手机端**：Filza /「文稿」App 打开上面路径直接看。
-- **SSH**：`cat /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log`，或 `tail -f` 实时跟。
+- **SSH**：`cat /var/mobile/Library/Crane/CraneBadgeFix.log`，或 `tail -f` 实时跟。
 - **电脑端**：`Console.app` 或 `idevicesyslog` 过滤 `[CraneBadgeFix]`（NSLog 同步进 os_log）。
 
 `postinst` 每次安装都会清空旧日志，所以装完重启后取到的就是这一次的完整日志。
 
-日志里最关键的几行：
+日志里最关键的几行（v0.8）：
 ```
-已 hook(C) _badgeCountStoreGetContainerCount @0x...            ← C 层 hook 是否挂上
-已 hook badgeValueForBundleID -> -[XXX badgeValueForBundleID:]  ← ObjC 层是否挂上
-找到 Crane 官方清零 API: -[XXX crane_resetBadge...]            ← reset API 是否可用
-[badgeValueForBundleID:] app=com.tencent.xin value=3            ← 快捷菜单每次读取的实际值
-_privSetBadgeNumberHook 被调用 badgeNumber=0 app=...            ← 微信清角标信号
+==== CraneBadgeFix v0.8 加载（保守安全版，仅 C 函数层 hook）====
+找到 CraneSB: ...CraneSB.dylib  slide=0x...  arch=arm64e
+已 hook(C) _badgeCountStoreGetContainerCount @0x...     ← C 层 hook 是否挂上
+已 hook(C) _badgeCountStoreSetContainerCount @0x...
+已 hook(C) _badgeCountStoreGetAppCount @0x...
+已 hook(C) _privSetBadgeNumberHook @0x...
+初始化完成（仅 C 函数层 hook）。日志路径 ...
+BadgeStore 探测 ... : exists=1 size=... plist=dict    ← plist 是否读到
+从 plist 发现残留: app=... cid=... count=...           ← 扫到的历史残留
+_privSetBadgeNumberHook 被调用 badgeNumber=0 app=...  ← 微信清角标信号
 ```
 
 ## ⚠️ v0.3 失效复盘（重要，避免重蹈）

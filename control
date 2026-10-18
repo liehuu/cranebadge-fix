@@ -1,7 +1,7 @@
 Package: com.82flex.cranebadgefix
 Name: Crane Badge Reset Fix
-Version: 0.7.0
-Description: 修复 Crane 1.3.17 多开应用（微信等）消息已读后，图标角标已消失但快捷菜单（Haptic Touch）仍残留 per-container 未读数、重启 SpringBoard 后角标复活的问题。本版根据实测日志修正三个问题：(1) Crane 用 category 把 crane_resetBadge / badgeValueForBundleID: 等方法挂在系统私有类上，class_getImageName 返回的是系统镜像名而非 CraneSB，此前按镜像过滤导致官方清零 API 与快捷菜单 ObjC hook 全部定位失败，现改为在全部类中按 Crane 独有 selector 匹配并用 class_replaceMethod 同步方法表；(2) BadgeStore.plist 结构并非假定的两级嵌套，改为递归遍历 + 特征识别(bundle id 含点 / container 为 UUID)自适应解析，并输出 plist 读取诊断；(3) 启动清零不再压掉启动后到达的真实新消息，也只按精确 (appID,containerID) 清除而不牵连同 app 其他容器。安装后不自动重启 SpringBoard，需手动重启一次才生效。
+Version: 0.8.0
+Description: 修复 Crane 1.3.17 多开应用（微信等）消息已读后，图标角标已消失但快捷菜单（Haptic Touch）仍残留 per-container 未读数、重启 SpringBoard 后角标复活的问题。本版为**保守安全版**，回退 v0.7 全部高危代码：v0.7 调用 Crane 官方 crane_resetBadgeOfContainer... 时把 Class 对象当作 self 传给系统私有类的实例方法，导致 ivar 越界、SpringBoard 启动崩溃、手机重启后死机无法进入系统（v0.6 因按镜像过滤从未执行该代码而侥幸不崩）。v0.8 删除全部 ObjC 运行时操作（reset API 调用、badgeValueForBundleID: hook、class_replaceMethod），只保留 v0.4/v0.5/v0.6 已在真机验证从不崩溃的 C 函数层 hook（slide+vmaddr + MSHookFunction），并为所有 plist 递归遍历加入深度上限防止栈溢出。快捷菜单深层修复暂缓，图标角标清零能力与 v0.6 相同。安装后不自动重启 SpringBoard，需手动重启一次才生效。
 Maintainer: 82flex
 Author: 82flex
 Section: Tweaks

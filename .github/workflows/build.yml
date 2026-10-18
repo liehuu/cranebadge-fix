@@ -20,6 +20,8 @@ jobs:
       - name: Setup theos
         run: |
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "PATH=$HOME/theos/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build tweak
         run: make package

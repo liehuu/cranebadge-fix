@@ -239,7 +239,7 @@ static NSDateFormatter *g_logFmt = nil;
 //      static declaration follows non-static declaration）。
 static void CBFLog(NSString *fmt, ...);
 static const char *g_cranePath = NULL;
-static BOOL is_string(id o);   // 定义在下方「状态」段，rep_SetExistingBadge 要用
+static BOOL is_string(id o);   // 前置声明：实现在下方「状态」段，dump_crane_dirs_once 要用
 
 // BadgeStore.plist 的候选路径。
 //
@@ -1104,21 +1104,12 @@ static void purge_harvested_only(void) {
 //   历史残留本身也 > 0，Crane 启动初期回灌时会被全部记成「新消息」，
 //   结果每个残留都受保护、一个都清不掉 → 持久化清零功能被废掉。
 //   基线对比不依赖「是否非零」，因此没有这个反噬。
-static NSMutableDictionary *g_maxSeenCount = nil;   // "app|cid" -> @(曾见最大 count)
+//
+// ★ v0.9.1：原 g_maxSeenCount / note_max_count() 已**整体删除**。
+//   它在 v0.9.0 是错误判据的载体；改成基线判据后它没有任何读取方，
+//   留着只是个纯占内存的全局变量（实测确认它会作为活跃符号留在产物符号表里）。
+//   诊断信息改由下面的日志行直接给出，更直接也更省内存。
 
-// 记录某容器曾出现过的最大 count（诊断用：帮助确认哪些容器有新消息）
-static void note_max_count(id appID, id cid, unsigned long long v) {
-    if (!is_string(appID) || !is_string(cid) || v == 0) return;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{ g_maxSeenCount = [NSMutableDictionary dictionary]; });
-
-    NSString *pair = [NSString stringWithFormat:@"%@|%@", appID, cid];
-    pthread_mutex_lock(&g_lock);
-    NSNumber *prev = g_maxSeenCount[pair];
-    unsigned long long prevMax = prev ? prev.unsignedLongLongValue : 0;
-    if (v > prevMax) g_maxSeenCount[pair] = @(v);
-    pthread_mutex_unlock(&g_lock);
-}
 
 // ★★ 读取侧的保护判据（本轮真正的修复点）：
 //   zeroMode 期间要压制读数，但**必须放过有真实新消息的容器**。
@@ -1301,15 +1292,14 @@ static void rep_SetContainerCount(id appID, id containerID, unsigned long long c
     CBFLog(@"[写] SetContainerCount app=%@ cid=%@ count=%llu", appID, containerID, count);
 
     if (count > 0) {
-        // ★ v0.9.1：记录曾见最大 count（诊断 + 帮助确认哪些容器来了新消息）
-        note_max_count(appID, containerID, count);
-
         // ⚠️ v0.9.1 修语义混用：这里传的是**单容器**计数，
         //   必须用 "C" 通道记账，不能与 rep_PrivSetBadge 的「app 总数」混在一张表。
         //   v0.9.0 两者共用 g_lastCount[appID] → 日志里
         //   `v=5`（总数）紧跟 `count=2`（单容器）被误判成「5→2 巨幅下降」→ 误 purge。
+        //   注意：C 通道**只记账不触发 purge**，因为「单个容器计数变化」
+        //   与「用户已读」没有必然关系，据此 purge 会误伤。
         unsigned long long delta = 0;
-        note_count_change(appID, count, @"C", &delta);   // 单容器通道：不触发 purge，只记账
+        note_count_change(appID, count, @"C", &delta);
     }
 
     if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
@@ -1427,7 +1417,13 @@ static void install_hooks(void) {
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.9.1 加载（plist 基线判据修回归 + 未读下降清残留）====");
+        // ⚠️ 版本行**必须只用 ASCII**。含中文的 NSString 在 arm64e 上按 UTF-16
+        //   存储，ASCII 字节会被 \0 隔开，产物里搜不到版本串 ——
+        //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
+        //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
+        //   中文说明另起一行打。
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_091 (2026-10-18) ====");
+        CBFLog(@"版本 v0.9.1：plist 基线判据修 v0.9.0 回归（图标角标收消息不亮）+ 未读下降清残留");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

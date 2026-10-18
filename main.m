@@ -1,8 +1,18 @@
 /*
- * CraneBadgeFix v0.9.5（清除已读残留容器：修快捷菜单挂数 + 新消息角标基数错）
+ * CraneBadgeFix v1.0（最终版：功能 = v0.9.5，日常运行不带日志）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * ★ v1.0 定位（用户 2026-10-19 02:18 定版）
+ * ════════════════════════════════════════════════════════════════════
+ * 功能基线 = v0.9.5（清除已读残留容器：修「快捷菜单挂 2、新消息角标变 3」）。
+ * 日常运行**完全不带日志**（CBFLOG_ENABLED=0）：零文件写入、零 NSLog 输出，
+ * 无任何诊断功能（v0.8.2 的 dump_crane_dirs_once 目录探测已整体删除）。
+ * 用户原话：「先不要日志了，以后出问题，再出带日志的版本」。
+ * → 恢复方式：把 CBFLOG_ENABLED 改成 1 重新构建，立即得到与开发版
+ *   完全一致的日志版（全部 CBFLog 调用点含版本行原样保留，未动一行）。
  *
  * ════════════════════════════════════════════════════════════════════
  * ★★★ v0.9.5：用户实测反馈「快捷菜单挂 2，收到新消息角标变 3」
@@ -328,13 +338,23 @@ static dispatch_queue_t g_logQueue = nil;
 static NSDateFormatter *g_logFmt = nil;
 
 // ⚠️ 前置声明：C 语言要求「先声明后使用」。
-//   1) CBFLog：dump_crane_dirs_once()（下文）在其定义之前就要调用它。
+//   1) CBFLog：下文多处函数在其定义之前就要调用它。
 //   2) g_cranePath：badge_store_paths() 要用它，而它的定义在「定位 CraneSB」段落。
 //      缺少任一前置声明都会编译失败（implicit function declaration /
 //      static declaration follows non-static declaration）。
 static void CBFLog(NSString *fmt, ...);
 static const char *g_cranePath = NULL;
-static BOOL is_string(id o);   // 前置声明：实现在下方「状态」段，dump_crane_dirs_once 要用
+static BOOL is_string(id o);   // 前置声明：实现在下方「状态」段
+
+// ════════════════════════════════════════════════════════════════════
+// ★ v1.0 最终版：日志总开关（用户 2026-10-19 02:18 明确要求：
+//   「先不要日志了，以后出问题，再出带日志的版本」）
+// ════════════════════════════════════════════════════════════════════
+// 实现方式：**只关输出层，不动任何调用点**。源码里全部 CBFLog 调用
+// （含版本行 BUILD_TAG）原样保留，日常运行零文件写入、零 NSLog；
+// 日后需要排查时，把下面的 0 改成 1 重新构建，立即得到一份与
+// 开发版完全一致的日志版（包括版本行、[读]/[写] 全链路、plist 探测）。
+#define CBFLOG_ENABLED 0
 
 // BadgeStore.plist 的候选路径。
 //
@@ -384,48 +404,17 @@ static NSArray<NSString *> *badge_store_paths(void) {
     return out;
 }
 
-// v0.8.2：**一次性目录探测**。plist 路径猜不出来就别猜了——直接把候选目录
-// 的实际内容列出来，用户一眼就能看到 Crane 到底把文件存在哪、叫什么名。
-// 只列目录、不做任何写操作，绝无副作用。
-static dispatch_once_t g_dumpOnce;
-static void dump_crane_dirs_once(void) {
-    dispatch_once(&g_dumpOnce, ^{
-        NSFileManager *fm = [NSFileManager defaultManager];
-        NSMutableArray<NSString *> *dirs = [NSMutableArray array];
-        NSString *jp = jbroot_prefix();
-        if (jp) {
-            [dirs addObject:[jp stringByAppendingString:@"var/mobile/Library/Crane"]];
-            [dirs addObject:[jp stringByAppendingString:@"Library/Crane"]];
-        }
-        [dirs addObject:@"/var/mobile/Library/Crane"];
-        [dirs addObject:@"/var/jb/var/mobile/Library/Crane"];
-
-        for (NSString *d in dirs) {
-            NSArray *items = [fm contentsOfDirectoryAtPath:d error:nil];
-            if (!items.count) {
-                CBFLog(@"[目录探测] %@ → 不存在或为空", d);
-                continue;
-            }
-            CBFLog(@"[目录探测] %@ → %lu 个条目", d, (unsigned long)items.count);
-            for (NSString *n in items) {
-                NSString *full = [d stringByAppendingPathComponent:n];
-                NSDictionary *attr = [fm attributesOfItemAtPath:full error:nil];
-                unsigned long long sz = [attr fileSize];
-                // ⚠️ v0.8.3 修 bug：v0.8.2 写的是
-                //    `BOOL isDir = [fm fileExistsAtPath:full isDirectory:NULL];`
-                //    —— 这个方法返回的是「文件是否存在」，不是 isDirectory 的值！
-                //    于是所有条目都被误报成 (dir)（实机日志里
-                //    「BadgeStore.plist (dir) 306 bytes」就是这么来的）。
-                //    正确做法：用属性字典的 NSFileType 判断。
-                NSString *type = attr[NSFileType];
-                BOOL isDir = [type isEqualToString:NSFileTypeDirectory];
-                CBFLog(@"[目录探测]    %@ %@ %llu bytes", n, isDir ? @"(dir)" : @"(file)", sz);
-            }
-        }
-    });
-}
+// ⛔ v1.0 已删除 dump_crane_dirs_once（一次性目录探测）。
+//    它是 v0.8.2 plist 路径排查期的开发工具，唯一产出就是日志。
+//    v1.0 起不带日志（CBFLOG_ENABLED=0），该函数失去存在意义，整体移除。
+//    历史说明：v0.8.1 实机日志显示四个候选 plist 路径全是 exists=0，
+//    曾用它把候选目录内容列出来确定 Crane 真实数据位置（RootHide 容器路径），
+//    该问题已由 jbroot_prefix() 动态推导解决，见 badge_store_paths 注释。
 
 static void CBFLogInit(void) {
+#if !CBFLOG_ENABLED
+    return;   // v1.0 无日志模式：不创建日志文件、不建写队列
+#else
     NSArray *cands = @[
         @"/var/mobile/Library/Crane/CraneBadgeFix.log",
         @"/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log",
@@ -451,9 +440,14 @@ static void CBFLogInit(void) {
         [fm createFileAtPath:g_logPath contents:nil attributes:nil];
     }
     NSLog(@"[CraneBadgeFix] 日志文件: %@", g_logPath);
+#endif
 }
 
 static void CBFLog(NSString *fmt, ...) {
+#if !CBFLOG_ENABLED
+    (void)fmt;   // v1.0 无日志模式：空实现。所有调用点原样保留，
+                 // 日后把 CBFLOG_ENABLED 改成 1 即恢复完整日志版。
+#else
     va_list ap;
     va_start(ap, fmt);
     NSString *msg = [[NSString alloc] initWithFormat:fmt arguments:ap];
@@ -477,6 +471,7 @@ static void CBFLog(NSString *fmt, ...) {
         [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
         [fh closeFile];
     });
+#endif
 }
 
 #pragma mark - substrate
@@ -1742,14 +1737,7 @@ static void install_hooks(void) {
 
     // v0.8：不再调用任何 ObjC 方法（曾导致死机，见文件头安全声明）
     CBFLog(@"初始化完成（仅 C 函数层 hook）。日志路径 %@", g_logPath);
-
-    // v0.8.2：立刻把候选目录内容打出来。
-    // v0.8.1 实机日志显示四个候选 plist 路径全是 exists=0，
-    // 与其继续猜路径，不如让用户从日志里一眼看到 Crane 的真实数据在哪。
-    // dump_crane_dirs_once 内部有 dispatch_once，只执行一次；纯只读，无副作用。
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        dump_crane_dirs_once();
-    });
+    // ⛔ v1.0 已移除 dump_crane_dirs_once 调用（函数本体已删除，见上方说明）
 }
 
 __attribute__((constructor)) static void CBFInit(void) {
@@ -1760,8 +1748,8 @@ __attribute__((constructor)) static void CBFInit(void) {
         //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
         //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
         //   中文说明另起一行打。
-        CBFLog(@"==== CraneBadgeFix BUILD_TAG_095 (2026-10-19) ====");
-        CBFLog(@"版本 v0.9.5：清除已读残留容器，修快捷菜单挂数 + 新消息角标基数错");
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_100 (2026-10-19) ====");
+        CBFLog(@"版本 v1.0：最终版。功能 = v0.9.5；日常运行不带日志（CBFLOG_ENABLED=0），排查时改开关重建即为日志版");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

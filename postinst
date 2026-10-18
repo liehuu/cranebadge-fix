@@ -1,6 +1,1 @@
-#!/bin/sh
-# 安装后：重置坏角标缓存 + 重启 SpringBoard 让钩子与缓存同时生效
-rm -f /var/jb/var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
-rm -f /var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
-killall -9 SpringBoard 2>/dev/null || true
-exit 0
+IyEvYmluL3NoCiMg5a6J6KOF5ZCO77ya5riF5o6JIENyYW5lIOeahCBCYWRnZVN0b3JlIOWtmOmHj+e8k+WtmOOAggojIOazqOaEj++8mui/memHjCAqKuS4jeWGjSoqIGtpbGxhbGwgU3ByaW5nQm9hcmQg4oCU4oCUIOmBv+WFjeWuieijheWNs+mHjeWQr+WvvOiHtOeUqOaIt+S4jemAgiAvIOaJk+aWreS9v+eUqOOAggojIOihpeS4ge+8iCBDcmFuZUJhZGdlRml4LmR5bGliIO+8iemcgOWcqOS4i+asoSBTcHJpbmdCb2FyZCDlkK/liqjml7bliqDovb3vvIwKIyDlhbbjgIzlkK/liqjmuIXpm7bmqKHlvI/jgI3kvJrmioogQ3JhbmUg5LuOIHBsaXN0IOaBouWkjeeahOWOhuWPsuinkuagh+WOi+aIkCAwIOW5tuWbnuWGmSBwbGlzdO+8jAojIOWboOatpOijheWujOihpeS4geivt+aJi+WKqOmHjeWQr+S4gOasoSBTcHJpbmdCb2FyZO+8iOiuvue9rumHjOmHjeWQr++8jOaIluWFs+acuumHjeWQr++8ieaJjeS8mueUn+aViOOAggpybSAtZiAvdmFyL2piL3Zhci9tb2JpbGUvTGlicmFyeS9DcmFuZS9CYWRnZVN0b3JlLnBsaXN0IDI+L2Rldi9udWxsCnJtIC1mIC92YXIvbW9iaWxlL0xpYnJhcnkvQ3JhbmUvQmFkZ2VTdG9yZS5wbGlzdCAyPi9kZXYvbnVsbApleGl0IDAK

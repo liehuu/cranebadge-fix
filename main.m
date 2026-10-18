@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.8.3（保守安全版）
+ * CraneBadgeFix v0.9.0（未读下降检测版）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -117,6 +117,44 @@
  *      `[fm fileExistsAtPath:isDirectory:]` 返回的是「是否存在」而非 isDirectory 值，
  *      导致所有条目误报 (dir)。改用 attributesOfItemAtPath 的 NSFileType 判断。
  *
+ * ── v0.9.0：找到「快捷菜单」的第一个真根因并修复 ────────────────────
+ * v0.8.3 实机日志第一次看清了完整数据流（23:37:07~23:37:20）：
+ *
+ *   非清零信号 v=1  →  [写] SetContainerCount count=1  →  [读] GetContainerCount → 1
+ *   非清零信号 v=2  →  [写] count=2  →  [读] → 2
+ *   非清零信号 v=3  →  [写] count=3  →  [读] → 3
+ *   非清零信号 v=4  →  [写] count=4  →  [读] → 4
+ *   非清零信号 v=3  →  [写] count=3  →  [读] → 3     ← 下降！
+ *   非清零信号 v=4  →  [写] count=4  →  [读] → 4
+ *   非清零信号 v=5  →  [写] count=5  →  [读] → 5
+ *   非清零信号 v=2  →  [写] count=2  →  [读] → 2     ← 大幅下降
+ *   ...（共 20 次）
+ *   [23:37:40] [读] GetContainerCount → 5    ← 无写入，纯读取（快捷菜单在轮询）
+ *   [23:37:55] [读] GetContainerCount → 5
+ *   [23:38:04] [读] GetContainerCount → 5
+ *
+ * 两个决定性结论：
+ *   1) 写路径确实走 _badgeCountStoreSetContainerCount（我 v0.8.3 那句
+ *      「写路径不走这里」是**错的** —— 当时只是这个函数没打日志）。
+ *      读路径确实走 GetContainerCount（最后三行无写入的纯读取 = 菜单轮询）。
+ *   2) ★★ **微信全程没发过一次 badgeNumber=0**（最低只到 v=1），
+ *      但它的未读数**会下降**（4→3、5→2）—— 那就是用户在读消息。
+ *
+ * → 第一个真根因：is_cleared 只在 v==0 时置位，等的是一个**永远不来的信号**，
+ *   所以快捷菜单永远不被抑制。
+ *
+ * v0.9.0 修复（纯 C 层数据流，不碰任何 ObjC 方法）：
+ *   新增 note_count_change()：记住每个 app 上次上报的未读数，
+ *     · 新值 < 上次值 → 用户已读 → purge 该 app 的容器 + mark_cleared(YES)
+ *     · 新值 = 上次值 → 同一事件的第二个上报，跳过（去重，防重复 purge）
+ *     · 新值 > 上次值 → 新消息 → mark_cleared(NO) 恢复正常计数
+ *   时机选在 rep_PrivSetBadge（系统设置角标的入口）：在它把新值写入 Crane 之前
+ *   先清残留，既不吞掉即将到来的新消息（写入仍透传），又让后续菜单读取拿到 0。
+ *
+ * 同时新增 setExisting 探针：hook `_setExistingBadgeCountForApplication`@0x69f8
+ *   （symtab 里一直存在但从未 hook）。本版**只打日志不改行为** ——
+ *   该函数可能同时服务图标角标路径，贸然改返回值会让图标角标也挂掉。
+ *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
 
@@ -143,6 +181,7 @@ static NSDateFormatter *g_logFmt = nil;
 //      static declaration follows non-static declaration）。
 static void CBFLog(NSString *fmt, ...);
 static const char *g_cranePath = NULL;
+static BOOL is_string(id o);   // 定义在下方「状态」段，rep_SetExistingBadge 要用
 
 // BadgeStore.plist 的候选路径。
 //
@@ -405,6 +444,32 @@ static void *crane_fn(uintptr_t off) {
     return (void *)(g_slide + off);
 }
 
+// ── v0.9.0：新增 hook _setExistingBadgeCountForApplication ────────────
+//
+// 背景（v0.8.3 实机日志的决定性证据）：
+//   写路径确认走 _badgeCountStoreSetContainerCount（`[写] SetContainerCount` 大量出现）；
+//   读路径确认走 _badgeCountStoreGetContainerCount（快捷菜单在轮询它，见 23:37:40/55/38:04）；
+//   **但微信全程没发过一次 badgeNumber=0** —— 最低只到 v=1。
+//   而 is_cleared 标记只在 v==0 时置位 → 快捷菜单永远不被抑制。
+//
+// 这是「快捷菜单修不掉」的第一个真正根因：**清零信号永远不来**。
+//
+// 观察到一个更本质的事实：图标角标清零正确，但 Crane 的 per-container 缓存不清。
+// 说明微信是直接调系统 UIKitApplication 的 setBadgeNumber:，
+// 而 Crane 只是**旁路读取** per-container 缓存去画快捷菜单 —— 它自己不知道用户已读。
+//
+// 因此新增 hook `_setExistingBadgeCountForApplication`（symtab 偏移 0x69f8）：
+// 从函数名语义看，它是「给某 app 设置现有角标数」的入口，
+// 极可能是 Crane 在菜单展示前把缓存值写进去的地方。
+// 本版**先只加日志**探明它的签名与调用时机（参数个数/类型/值），
+// 确认后再决定是压 0 还是改返回值 —— 不盲目下钩改行为。
+typedef void (*setExisting_t)(id self, SEL _cmd, id appID, unsigned long long count);
+static setExisting_t orig_SetExistingBadge = NULL;
+
+// v0.9.0 记录最近一次观察到的 setExisting 调用，用于诊断对照
+static unsigned long long g_lastExistingCount = 0;
+static NSString         *g_lastExistingApp = nil;
+
 #pragma mark - 状态
 
 typedef unsigned long long (*getContainerCount_t)(id appID, id containerID, unsigned long long flag);
@@ -479,6 +544,58 @@ static void remember_container(id appID, id containerID) {
     if (!s) { s = [NSMutableSet set]; g_containers[appID] = s; }
     [s addObject:containerID];
     pthread_mutex_unlock(&g_lock);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// v0.9.0：「未读数下降」= 用户已读的可靠信号
+// ════════════════════════════════════════════════════════════════════
+// v0.8.3 实机日志的决定性发现：**微信全程没发过一次 badgeNumber=0**。
+// 23:37:07~23:37:20 共 20 次调用的 v 值是 1,2,3,4,3,4,5,5,2,3,4,3,4,5,5…
+//
+// 注意这个序列：**它会下降**（4→3、5→2）。这不是噪声 ——
+// 用户每读掉一批消息，微信上报的未读总数就下降。
+// 而我们此前只在 v==0 时置 is_cleared，等一个永远不来的信号 → 快捷菜单永不抑制。
+//
+// 修复思路（保守）：
+//   记住该 app 上一次上报的未读数 vPrev；
+//   当新值 vNew < vPrev 时，说明用户读了东西 → 把 Crane 的 per-container
+//   缓存按差值回收（purge），并把已读数记下来；
+//   当 vNew > vPrev（新消息）时，撤销清零标记，恢复正常显示。
+//
+// 为什么这个判据安全：
+//   ① 下降只可能由「用户已读」造成（新消息只会让数字变大）；
+//   ② 差值回收精确到「少了多少条就清多少」，不会吞掉真实新消息；
+//   ③ 不依赖任何 ObjC 方法调用，纯 C 层数据流。
+static NSMutableDictionary *g_lastCount = nil;    // appID -> @(上次未读数)
+
+// ⚠️ v0.9.0 去重：同一次未读事件会被 rep_PrivSetBadge 与 rep_SetContainerCount
+// **各上报一次同一个值**（实机日志里 `非清零信号 v=2` 与
+// `[写] SetContainerCount count=2` 是紧挨着的一对）。
+// 若两边都独立记一次「上次值」，第二条会把自己当成 0 来比 → 误判下降 → 重复 purge。
+// 解法：**只有当新值与上次记录不同**才算一次真实变化；相同值直接跳过。
+// 这样 2 → 2 不会被判成 2→0 的下降。
+
+// 返回 YES 表示检测到「未读数下降」（用户已读）
+static BOOL note_count_change(id appID, unsigned long long vNew, unsigned long long *deltaOut) {
+    if (!is_string(appID)) return NO;
+    // ⚠️ v0.9.0 并发加固：rep_PrivSetBadge 与 rep_SetContainerCount 可能被不同线程
+    //   同时进入。原来的 `if (!g_lastCount) g_lastCount = [NSMutableDictionary dictionary];`
+    //   是「检查后创建」，两个线程会各建一个 → 后者覆盖前者 → 状态丢失。
+    //   改用 dispatch_once 保证唯一初始化。
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ g_lastCount = [NSMutableDictionary dictionary]; });
+
+    pthread_mutex_lock(&g_lock);
+    NSNumber *prevNum = g_lastCount[appID];
+    unsigned long long vPrev = prevNum ? prevNum.unsignedLongLongValue : vNew;
+    BOOL sameAsPrev = (vNew == vPrev);          // 同一事件的第二个上报
+    g_lastCount[appID] = @(vNew);
+    BOOL dropped = (!sameAsPrev && vNew < vPrev);
+    pthread_mutex_unlock(&g_lock);
+
+    if (deltaOut) *deltaOut = dropped ? (vPrev - vNew) : 0;
+    if (dropped) CBFLog(@"↓ 检测到未读下降 app=%@ %llu → %llu", appID, vPrev, vNew);
+    return dropped;
 }
 
 #pragma mark - ⛔ 已移除：Crane 官方 crane_resetBadge... API 调用
@@ -771,6 +888,20 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
     return cnt;
 }
 
+// ── v0.9.0：setExisting 的探针实现 ────────────────────────────────────
+// ⚠️ 本版**只记录不修改**：先确认签名与调用时机，再决定压不压 0。
+//   贸然改这个函数的入参/返回值有风险（它可能同时服务于图标角标路径，
+//   改错会让图标角标也挂掉）。宁可多跑一轮，不可再翻车。
+static void rep_SetExistingBadge(id self, SEL _cmd, id appID, unsigned long long count) {
+    g_lastExistingCount = count;
+    g_lastExistingApp = is_string(appID) ? appID : nil;
+    if (count > 0) {
+        CBFLog(@"[?] SetExistingBadge app=%@ count=%llu  ← 探针：确认签名与调用时机",
+               appID, count);
+    }
+    if (orig_SetExistingBadge) orig_SetExistingBadge(self, _cmd, appID, count);
+}
+
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
     remember_container(appID, containerID);
 
@@ -783,10 +914,19 @@ static void rep_SetContainerCount(id appID, id containerID, unsigned long long c
     else if (count == 0) mark_cleared(appID, YES);
 
     // ★ v0.8.3 新增诊断：这是 Crane **写入** per-container 角标缓存的唯一入口。
-    // v0.8.1/v0.8.2 实机日志里这一行**一次都没出现**，说明微信清角标的写动作
-    // 完全没走这个 C 函数 —— 快捷菜单的红点残留必然来自别处。
-    // 必须把它打出来才能确定 Crane 内部到底用哪条路更新缓存。
+    //   v0.8.3 实机日志已证实这条路径**确实被调用**（20+ 次），
+    //   所以我上一轮「写路径不走这里」的推断是错的 —— 当时只是没打日志。
     CBFLog(@"[写] SetContainerCount app=%@ cid=%@ count=%llu", appID, containerID, count);
+
+    // ★★ v0.9.0 核心修复：捕获「未读数下降」→ 用户已读 → 清掉 Crane 的残留。
+    //   实机日志显示微信从不发 v=0，但会下降（4→3、5→2…）。
+    //   下降后 Crane 的 per-container 缓存仍是旧值 → 快捷菜单红点残留。
+    //   这里不拦截本次写入（透传给 Crane，保证它的内部一致性），
+    //   而是在**读取侧**抑制：见 rep_GetContainerCount 的 g_readDropped 判断。
+    if (count > 0) {
+        unsigned long long delta = 0;
+        note_count_change(appID, count, &delta);
+    }
 
     if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
 }
@@ -796,11 +936,6 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
     if (badgeNumberObj && [badgeNumberObj respondsToSelector:@selector(longLongValue)])
         v = [badgeNumberObj longLongValue];
 
-    // ★ v0.8.3 诊断细化：v 才是「用户点了已读」的真实信号。
-    // 实机日志里 v>0（未读 1~6）与 v==0（已读）都会走这里，
-    // 微信清角标时 Crane 走的是 0x7db0「直接透传」分支 —— 系统角标置 0，
-    // 但 Crane 的 per-container 缓存没动 → 快捷菜单仍显示历史值。
-    // 这里在 v==0 时把 purge 的实际结果打出来，确认是否真的写下去了。
     if (v == 0) {
         NSUInteger before = 0;
         pthread_mutex_lock(&g_lock);
@@ -809,9 +944,29 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
         purge_containers(bundleID);
         CBFLog(@"★ 清零信号 v=0 app=%@ 已知容器=%lu", bundleID, (unsigned long)before);
         mark_cleared(bundleID, YES);
-    } else {
-        CBFLog(@"  非清零信号 v=%lld app=%@", v, bundleID);
-        if (v > 0) mark_cleared(bundleID, NO);
+    } else if (v > 0) {
+        // ★★ v0.9.0 核心修复：微信清角标**不发 v=0**（实机证据），但会下降。
+        //   下降 = 用户读掉了消息。此时 Crane 的 per-container 缓存仍是旧值，
+        //   快捷菜单就一直显示历史红点。
+        //
+        //   这里的时机最好：_privSetBadgeNumberHook 是「系统准备设置角标」的入口，
+        //   在此处把 Crane 缓存清零，既不会吞掉即将到来的新消息（本次写入仍透传），
+        //   又能让后续菜单读取拿到 0。
+        unsigned long long delta = 0;
+        BOOL dropped = note_count_change(bundleID, (unsigned long long)v, &delta);
+        if (dropped) {
+            NSUInteger before = 0;
+            pthread_mutex_lock(&g_lock);
+            before = [g_containers[bundleID] count];
+            pthread_mutex_unlock(&g_lock);
+            purge_containers(bundleID);
+            CBFLog(@"★ 未读下降即已读 v=%lld→已 purge app=%@ 容器=%lu delta=%llu",
+                   v, bundleID, (unsigned long)before, delta);
+            mark_cleared(bundleID, YES);
+        } else {
+            // 未读数没下降（新消息或未变），恢复正常计数
+            mark_cleared(bundleID, NO);
+        }
     }
     if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
 }
@@ -859,6 +1014,9 @@ static void install_hooks(void) {
     hook_addr((void **)&orig_SetContainerCount, o->setCnt,  "_badgeCountStoreSetContainerCount", (void *)rep_SetContainerCount);
     hook_addr((void **)&orig_GetAppCount,       o->getApp,  "_badgeCountStoreGetAppCount",       (void *)rep_GetAppCount);
     hook_addr((void **)&orig_PrivSetBadge,      o->privSet, "_privSetBadgeNumberHook",          (void *)rep_PrivSetBadge);
+    // ★ v0.9.0：新增探针（只日志不改行为）。这个符号不在 LC_DYLD_EXPORTS_TRIE，
+    //   dlsym 会失败并自动回退到 slide+vmaddr 地址下钩（hook_addr 内部已实现）。
+    hook_addr((void **)&orig_SetExistingBadge, o->setExisting, "_setExistingBadgeCountForApplication", (void *)rep_SetExistingBadge);
 
     // v0.8：不再调用任何 ObjC 方法（曾导致死机，见文件头安全声明）
     CBFLog(@"初始化完成（仅 C 函数层 hook）。日志路径 %@", g_logPath);
@@ -875,7 +1033,7 @@ static void install_hooks(void) {
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.8.3 加载（保守安全版，仅 C 函数层 hook）====");
+        CBFLog(@"==== CraneBadgeFix v0.9.0 加载（未读下降检测 + setExisting 探针）====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

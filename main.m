@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.8.1（保守安全版）
+ * CraneBadgeFix v0.8.2（保守安全版）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -73,6 +73,23 @@
  *      → 再换回来 → 无限递归 → 栈溢出崩溃。
  *      现用 claim_init() 在互斥锁内原子完成「检查+置位」。
  *
+ * ── v0.8.2：修正 plist 读不到（持久化清零失效）─────────────────────
+ * v0.8.1 实机日志：4 个 C hook **全部挂上**（修复生效），__TEXT=0 也证实
+ *   v0.8 确实是误杀（RootHide 下 ncmds=33，比标准多 13 条，遍历找不到 __TEXT）。
+ *   但暴露新问题：四个候选 BadgeStore.plist 路径 **全是 exists=0**，
+ *   30 秒内读了 20 多次全 nil → harvest_from_plist 恒为空
+ *   → g_harvested 恒为 0 → purge_harvested_only 恒为空操作
+ *   → 清零只剩内存态的 mark_cleared，**一重启就失效**（用户的核心诉求）。
+ *
+ * 原因：RootHide 把 CraneSB 装在容器路径里（实机）：
+ *   /private/var/containers/Bundle/Application/.jbroot-9AB6CCDA0F9265C2/usr/lib/TweakInject/CraneSB.dylib
+ * 而 __cstring 含 '/var/jb'、路径运行时拼接，
+ * 真实读写目标应为 <jbroot前缀>/var/mobile/Library/Crane/BadgeStore.plist。
+ *
+ * → v0.8.2：从 locate_crane() 拿到的**真实镜像路径动态推导** jbroot 前缀，
+ *   生成候选路径；并新增一次性目录探测 dump_crane_dirs_once()，
+ *   把候选目录的实际条目全打进日志。只列目录、纯只读、无副作用。
+ *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
 
@@ -92,25 +109,90 @@ static NSString *g_logPath = nil;
 static dispatch_queue_t g_logQueue = nil;
 static NSDateFormatter *g_logFmt = nil;
 
-// BadgeStore.plist 的真实路径（CraneSB __cstring 里写死的就是
-// "/var/mobile/Library/Crane/BadgeStore.plist"，**没有 /var/jb 前缀**）。
-// RootHide 下 /var/jb/var/mobile/... 虽也常可写，但必须两个都覆盖，
-// 否则会出现「补丁写了 A 路径，Crane 读 B 路径」的假清零。
+// ⚠️ 前置声明：badge_store_paths()（第 100 行附近）要用到 g_cranePath，
+//    而它的定义在「定位 CraneSB」段落（第 190 行附近）。
+//    C 语言要求「先声明后使用」，不在此处前置会编译失败。
+static const char *g_cranePath = NULL;
+
+// BadgeStore.plist 的候选路径。
+//
+// ⚠️ v0.8.2 实机教训：只试两个路径**全都读不到**（30 秒读了 20 多次全 exists=0）：
+//   /var/mobile/Library/Crane/BadgeStore.plist              → 不存在
+//   /var/jb/var/mobile/Library/Crane/BadgeStore.plist       → 不存在
+// 原因：RootHide 把 CraneSB 装在容器化路径里（实机日志）：
+//   /private/var/containers/Bundle/Application/.jbroot-9AB6CCDA0F9265C2/usr/lib/TweakInject/CraneSB.dylib
+// 而 CraneSB 的 __cstring 里含 '/var/jb' 前缀、路径又是运行时拼接的，
+// 于是它真正的读写目标很可能是：
+//   <jbroot前缀>/var/mobile/Library/Crane/BadgeStore.plist
+//   即 /private/var/containers/Bundle/Application/.jbroot-XXXX/var/mobile/Library/Crane/...
+//
+// → 因此这里**不能写死路径**，必须从 locate_crane() 拿到的真实镜像路径动态推导，
+//   再叠加若干兜底候选。
+static NSString *jbroot_prefix(void) {
+    if (!g_cranePath) return nil;
+    NSString *p = [NSString stringWithUTF8String:g_cranePath];
+    NSRange r = [p rangeOfString:@".jbroot-"];
+    if (r.location == NSNotFound) return nil;
+    // 从 ".jbroot-" 起，到下一个 "/" 结束（跳过 .jbroot-XXXXXXXX 目录名）
+    NSRange slash = [p rangeOfString:@"/"
+                                options:0
+                                  range:NSMakeRange(r.location, p.length - r.location)];
+    if (slash.location == NSNotFound) return nil;
+    return [p substringToIndex:slash.location + 1];   // 末尾已含 '/'
+}
+
+// 候选路径必须在 locate_crane() 之后才能算（依赖 g_cranePath），
+// 所以不再用 dispatch_once 缓存静态数组。
 // ⚠️ v0.8 修 v0.6 遗留的类型 bug：返回类型原写成 NSString *，实际返回 NSArray *
 //    （clang: warning: incompatible pointer types returning 'NSArray *' from
-//     a function with result type 'NSString *'）。返回类型与实际不符属未定义行为，
-//    调用方把它当数组用（for...in）却拿到非数组指针，是潜在崩溃点。
-//    连带修掉第二个 warning：for...in 直接遍历函数返回值时类型不确定。
+//     a function with result type 'NSString *'）。返回类型与实际不符属未定义行为。
 static NSArray<NSString *> *badge_store_paths(void) {
-    static NSArray<NSString *> *paths = nil;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        paths = @[
-            @"/var/mobile/Library/Crane/BadgeStore.plist",
-            @"/var/jb/var/mobile/Library/Crane/BadgeStore.plist",
-        ];
+    NSMutableArray<NSString *> *out = [NSMutableArray array];
+
+    // ① RootHide 容器前缀（最可能，v0.8.2 实机推导出来的）
+    NSString *jp = jbroot_prefix();
+    if (jp) {
+        [out addObject:[jp stringByAppendingString:@"var/mobile/Library/Crane/BadgeStore.plist"]];
+        [out addObject:[jp stringByAppendingString:@"usr/var/mobile/Library/Crane/BadgeStore.plist"]];
+    }
+    // ② 传统越狱路径（兜底）
+    [out addObject:@"/var/mobile/Library/Crane/BadgeStore.plist"];
+    [out addObject:@"/var/jb/var/mobile/Library/Crane/BadgeStore.plist"];
+
+    return out;
+}
+
+// v0.8.2：**一次性目录探测**。plist 路径猜不出来就别猜了——直接把候选目录
+// 的实际内容列出来，用户一眼就能看到 Crane 到底把文件存在哪、叫什么名。
+// 只列目录、不做任何写操作，绝无副作用。
+static dispatch_once_t g_dumpOnce;
+static void dump_crane_dirs_once(void) {
+    dispatch_once(&g_dumpOnce, ^{
+        NSFileManager *fm = [NSFileManager defaultManager];
+        NSMutableArray<NSString *> *dirs = [NSMutableArray array];
+        NSString *jp = jbroot_prefix();
+        if (jp) {
+            [dirs addObject:[jp stringByAppendingString:@"var/mobile/Library/Crane"]];
+            [dirs addObject:[jp stringByAppendingString:@"Library/Crane"]];
+        }
+        [dirs addObject:@"/var/mobile/Library/Crane"];
+        [dirs addObject:@"/var/jb/var/mobile/Library/Crane"];
+
+        for (NSString *d in dirs) {
+            NSArray *items = [fm contentsOfDirectoryAtPath:d error:nil];
+            if (!items.count) {
+                CBFLog(@"[目录探测] %@ → 不存在或为空", d);
+                continue;
+            }
+            CBFLog(@"[目录探测] %@ → %lu 个条目", d, (unsigned long)items.count);
+            for (NSString *n in items) {
+                NSString *full = [d stringByAppendingPathComponent:n];
+                unsigned long long sz = [[fm attributesOfItemAtPath:full error:nil] fileSize];
+                BOOL isDir = [fm fileExistsAtPath:full isDirectory:NULL];
+                CBFLog(@"[目录探测]    %@ %@ %llu bytes", n, isDir ? @"(dir)" : @"(file)", sz);
+            }
+        }
     });
-    return paths;
 }
 
 static void CBFLogInit(void) {
@@ -185,7 +267,7 @@ static void resolve_substrate(void) {
 
 static uintptr_t   g_slide = 0;
 static BOOL        g_arm64e = NO;
-static const char *g_cranePath = NULL;
+// g_cranePath 已在文件头部前置声明（供 badge_store_paths() 使用）
 
 typedef struct {
     uintptr_t getCnt, setCnt, getApp, setExisting, privSet;
@@ -718,12 +800,20 @@ static void install_hooks(void) {
 
     // v0.8：不再调用任何 ObjC 方法（曾导致死机，见文件头安全声明）
     CBFLog(@"初始化完成（仅 C 函数层 hook）。日志路径 %@", g_logPath);
+
+    // v0.8.2：立刻把候选目录内容打出来。
+    // v0.8.1 实机日志显示四个候选 plist 路径全是 exists=0，
+    // 与其继续猜路径，不如让用户从日志里一眼看到 Crane 的真实数据在哪。
+    // dump_crane_dirs_once 内部有 dispatch_once，只执行一次；纯只读，无副作用。
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        dump_crane_dirs_once();
+    });
 }
 
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.8.1 加载（保守安全版，仅 C 函数层 hook）====");
+        CBFLog(@"==== CraneBadgeFix v0.8.2 加载（保守安全版，仅 C 函数层 hook）====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

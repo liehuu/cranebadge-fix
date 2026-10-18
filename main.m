@@ -70,9 +70,10 @@ static setContainerCount_t orig_SetContainerCount = NULL;
 static privSetBadge_t      orig_PrivSetBadge      = NULL;
 static setExistingBadge_t  real_SetExistingBadge  = NULL;
 
-#pragma mark - 已清零 app 集合（角标被设为 0 的 bundle id）
+#pragma mark - 状态：已清零 app 集合 + 已知容器 ID 表
 
-static NSMutableSet *g_clearedApps = nil;
+static NSMutableSet *g_clearedApps = nil;        // 角标被设为 0 的 bundle id
+static NSMutableDictionary *g_containers = nil;  // appID -> NSMutableSet(containerID)
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static BOOL is_string(id obj) {
@@ -104,9 +105,37 @@ static BOOL is_cleared(id appID) {
     return r;
 }
 
+// 记录见过的 containerID（要显示 per-container badge，必然先被 SetContainerCount 设置过）
+static void remember_container(id appID, id containerID) {
+    if (!is_string(appID) || !is_string(containerID)) return;
+    pthread_mutex_lock(&g_lock);
+    NSMutableSet *s = g_containers[appID];
+    if (!s) {
+        s = [NSMutableSet set];
+        g_containers[appID] = s;
+    }
+    [s addObject:containerID];
+    pthread_mutex_unlock(&g_lock);
+}
+
+// 真正删除该 app 所有已知容器条目（走 orig 指针，避免递归回自己的 rep）
+static void purge_containers(id appID) {
+    if (!is_string(appID) || !orig_SetContainerCount) return;
+    pthread_mutex_lock(&g_lock);
+    NSArray *cids = [[g_containers[appID] allObjects] copy];
+    pthread_mutex_unlock(&g_lock);
+    for (id cid in cids) {
+        orig_SetContainerCount(appID, cid, 0);
+    }
+    if (cids.count) {
+        NSLog(@"[CraneBadgeFix] purged %lu container(s) of %@",
+              (unsigned long)cids.count, appID);
+    }
+}
+
 #pragma mark - 替换函数
 
-// 2) per-container 读取出口：快捷菜单 + GetAppCount 求和都走这里
+// 2) per-container 读取出口：快捷菜单 + GetAppCount 求和都走这里（兜底层）
 static unsigned long long rep_GetContainerCount(id appID, id containerID, unsigned long long flag) {
     unsigned long long cnt = 0;
     if (orig_GetContainerCount) cnt = orig_GetContainerCount(appID, containerID, flag);
@@ -118,9 +147,14 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
     return cnt;
 }
 
-// 3) 保留 v0.2 的第二清零信号：容器计数被设为 0 时也标记
+// 3) 第二清零信号：容器计数被设为 0 时也标记；同时记录 containerID 供 purge 使用
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
+    // 有新未读 -> 取消标记，避免吞掉后续新通知的计数
+    if (count > 0) mark_cleared(appID, NO);
+    remember_container(appID, containerID);
+
     if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, count);
+
     if (count == 0) {
         mark_cleared(appID, YES);
         if (real_SetExistingBadge) real_SetExistingBadge(appID, 0);
@@ -129,19 +163,22 @@ static void rep_SetContainerCount(id appID, id containerID, unsigned long long c
 
 // 1) 捕获「app 把角标设为 0」的信号（微信清角标入口）
 static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, id completion) {
-    // 先透传，保证 Crane 自身逻辑不受影响
-    if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
-
-    // badgeNumberObj 是 NSNumber（可能是 tagged pointer），nil 时 respondsToSelector 返回 NO
+    // 必须在透传前取值：orig 内部末尾会 release 这些参数
     long long v = -1;
     if (badgeNumberObj && [badgeNumberObj respondsToSelector:@selector(longLongValue)]) {
         v = [badgeNumberObj longLongValue];
     }
+
     if (v == 0) {
+        // 先真正删除已知容器条目，再打标记兜底（覆盖未记录到的容器）
+        purge_containers(bundleID);
         mark_cleared(bundleID, YES);
     } else if (v > 0) {
         mark_cleared(bundleID, NO);
     }
+
+    // 透传，保证 Crane 自身逻辑不受影响
+    if (orig_PrivSetBadge) orig_PrivSetBadge(self, _cmd, badgeNumberObj, bundleID, completion);
 }
 
 #pragma mark - 入口
@@ -167,6 +204,7 @@ __attribute__((constructor)) static void CBFInit(void) {
         }
 
         g_clearedApps = [[NSMutableSet alloc] init];
+        g_containers  = [[NSMutableDictionary alloc] init];
 
         void *getCnt = dlsym(h, "_badgeCountStoreGetContainerCount");
         void *setCnt = dlsym(h, "_badgeCountStoreSetContainerCount");

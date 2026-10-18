@@ -11,16 +11,20 @@
 #   /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log
 #   （即 Crane 自己的数据目录，可用 Filza / 文稿 App 打开，或 SSH 后 cat）
 
-rm -f /var/jb/var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
+# 日志查看（重启 SpringBoard 后再取，真实路径优先）：
+#   /var/mobile/Library/Crane/CraneBadgeFix.log
+#   （RootHide 下 /var/jb/var/mobile/Library/Crane/ 是同一份数据的另一入口）
+
 rm -f /var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
+rm -f /var/jb/var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
 
-rm -f /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log 2>/dev/null
 rm -f /var/mobile/Library/Crane/CraneBadgeFix.log 2>/dev/null
+rm -f /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log 2>/dev/null
 
-mkdir -p /var/jb/var/mobile/Library/Crane 2>/dev/null
 mkdir -p /var/mobile/Library/Crane 2>/dev/null
+mkdir -p /var/jb/var/mobile/Library/Crane 2>/dev/null
 
 echo "CraneBadgeFix 已安装。"
 echo "请手动重启一次 SpringBoard（设置里重启 或 关机重启）使补丁生效。"
-echo "生效后日志在：/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log"
+echo "生效后日志在：/var/mobile/Library/Crane/CraneBadgeFix.log"
 exit 0

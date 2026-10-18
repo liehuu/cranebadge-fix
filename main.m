@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.5
+ * CraneBadgeFix v0.6
  * ===================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -54,11 +54,28 @@
 
 static NSString *g_logPath = nil;
 static dispatch_queue_t g_logQueue = nil;
+static NSDateFormatter *g_logFmt = nil;
+
+// BadgeStore.plist 的真实路径（CraneSB __cstring 里写死的就是
+// "/var/mobile/Library/Crane/BadgeStore.plist"，**没有 /var/jb 前缀**）。
+// RootHide 下 /var/jb/var/mobile/... 虽也常可写，但必须两个都覆盖，
+// 否则会出现「补丁写了 A 路径，Crane 读 B 路径」的假清零。
+static NSString *badge_store_paths(void) {
+    static NSArray *paths = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        paths = @[
+            @"/var/mobile/Library/Crane/BadgeStore.plist",
+            @"/var/jb/var/mobile/Library/Crane/BadgeStore.plist",
+        ];
+    });
+    return paths;
+}
 
 static void CBFLogInit(void) {
     NSArray *cands = @[
-        @"/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log",
         @"/var/mobile/Library/Crane/CraneBadgeFix.log",
+        @"/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log",
         @"/tmp/CraneBadgeFix.log",
     ];
     for (NSString *p in cands) {
@@ -69,7 +86,17 @@ static void CBFLogInit(void) {
     }
     if (!g_logPath) g_logPath = @"/tmp/CraneBadgeFix.log";
     g_logQueue = dispatch_queue_create("com.82flex.cranebadgefix.log", DISPATCH_QUEUE_SERIAL);
-    [[NSFileManager defaultManager] createFileAtPath:g_logPath contents:nil attributes:nil];
+
+    g_logFmt = [[NSDateFormatter alloc] init];
+    // 本地时区 + 毫秒，避免 [NSDate date] 的 description 只给 UTC
+    //（用户会看到 13:47 而手机是 21:47，误以为日志过期）
+    [g_logFmt setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSS"];
+    [g_logFmt setTimeZone:[NSTimeZone localTimeZone]];
+
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (![fm fileExistsAtPath:g_logPath]) {
+        [fm createFileAtPath:g_logPath contents:nil attributes:nil];
+    }
     NSLog(@"[CraneBadgeFix] 日志文件: %@", g_logPath);
 }
 
@@ -83,11 +110,17 @@ static void CBFLog(NSString *fmt, ...) {
     if (!g_logPath || !g_logQueue) return;
     dispatch_async(g_logQueue, ^{
         NSFileManager *fm = [NSFileManager defaultManager];
-        [fm createFileAtPath:g_logPath contents:nil attributes:nil];
+        // ⚠️ 关键：createFileAtPath:contents: 在文件已存在时会**清空文件**！
+        //    v0.5 每次写日志都调用它，导致日志只剩最后一行（用户实测确认）。
+        //    必须先判断存在，只在不存在时创建，然后 seek 到末尾追加。
+        if (![fm fileExistsAtPath:g_logPath]) {
+            [fm createFileAtPath:g_logPath contents:nil attributes:nil];
+        }
         NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:g_logPath];
         if (!fh) return;
         [fh seekToEndOfFile];
-        NSString *line = [NSString stringWithFormat:@"%@ %@\n", [NSDate date], msg];
+        NSString *line = [NSString stringWithFormat:@"[%@] %@\n",
+                          [g_logFmt stringFromDate:[NSDate date]], msg];
         [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
         [fh closeFile];
     });
@@ -286,12 +319,7 @@ static id scrub_value(id v) {
 }
 
 static void scrub_plist(void) {
-    static const char *paths[] = {
-        "/var/jb/var/mobile/Library/Crane/BadgeStore.plist",
-        "/var/mobile/Library/Crane/BadgeStore.plist"
-    };
-    for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
-        NSString *p = [NSString stringWithUTF8String:paths[i]];
+    for (NSString *p in badge_store_paths()) {
         NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:p];
         if (!d) continue;
         NSDictionary *clean = scrub_value(d);
@@ -302,22 +330,73 @@ static void scrub_plist(void) {
 
 #pragma mark - 启动清零模式
 
-#define ZERO_MODE_SECONDS 12
+// v0.4/v0.5 的清零模式只「守株待兔」等 SetContainerCount 被调用，
+// 但 Crane 从 plist 恢复计数可能发生在 hook 装上之前，或走
+// _existingBadgeCountForApplication 的读取路径 —— 于是漏掉，重启后红点复活。
+//
+// v0.6 改为**主动清零**：直接从 BadgeStore.plist 里解析出
+// 所有 (appID -> containerID -> count)，用 Crane 官方 reset API 逐个清掉，
+// 不再依赖「是否观察到调用」。
+//
+// plist 结构（由 _existingBadgeCountForApplication 反汇编推得）：
+//   顶层 key = appID(bundle id)，value = { containerID: count, ... }
+#define ZERO_MODE_SECONDS 30
+
+static void harvest_from_plist(void) {
+    for (NSString *p in badge_store_paths()) {
+        NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:p];
+        if (!d) continue;
+        for (id appID in d) {
+            if (!is_string(appID)) continue;
+            id containers = d[appID];
+            if (![containers isKindOfClass:[NSDictionary class]]) continue;
+            for (id cid in (NSDictionary *)containers) {
+                if (!is_string(cid)) continue;
+                id cnt = ((NSDictionary *)containers)[cid];
+                // 只登记有非零计数的容器，稍后统一清
+                if ([cnt isKindOfClass:[NSNumber class]] && [cnt longLongValue] != 0) {
+                    remember_container(appID, cid);
+                    CBFLog(@"从 plist 发现残留: app=%@ cid=%@ count=%@", appID, cid, cnt);
+                }
+            }
+        }
+    }
+}
+
+// 用 Crane 官方 reset API 主动清掉所有已知容器的角标
+static void purge_all_known(void) {
+    pthread_mutex_lock(&g_lock);
+    NSDictionary *snapshot = [g_containers copy];
+    pthread_mutex_unlock(&g_lock);
+    if (!snapshot.count) return;
+    for (id appID in snapshot) {
+        purge_containers(appID);
+    }
+}
 
 static void schedule_zero_mode(void) {
     g_zeroMode = YES;
-    scrub_plist();
     CBFLog(@"进入启动清零模式 %d 秒", ZERO_MODE_SECONDS);
 
+    // 第 0 轮：先把 plist 里的残留登记进已知容器表
+    harvest_from_plist();
+
     dispatch_queue_t q = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
-    for (int i = 1; i <= ZERO_MODE_SECONDS / 2; i++) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 2.0 * NSEC_PER_SEC)), q, ^{
-            if (g_zeroMode) scrub_plist();
+    for (int i = 0; i < ZERO_MODE_SECONDS / 3; i++) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 3.0 * NSEC_PER_SEC)), q, ^{
+            if (!g_zeroMode) return;
+            harvest_from_plist();   // 随时抓 Crane 又写回去的新残留
+            scrub_plist();          // 直接把 plist 数字压 0
+            purge_all_known();      // 主动用官方 API 清 Crane 内存
         });
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ZERO_MODE_SECONDS * NSEC_PER_SEC)), q, ^{
+        // 收尾再做一次彻底清理，确保 plist 与内存都干净
+        harvest_from_plist();
+        scrub_plist();
+        purge_all_known();
         g_zeroMode = NO;
-        CBFLog(@"启动清零模式结束，恢复正常计数");
+        CBFLog(@"启动清零模式结束，已恢复正常计数");
     });
 }
 
@@ -346,6 +425,13 @@ static void rep_SetContainerCount(id appID, id containerID, unsigned long long c
     remember_container(appID, containerID);
     if (g_zeroMode && count > 0) {
         CBFLog(@"清零模式压零 cid=%@ count=%llu", containerID, count);
+        // 除了回写 0，还要用官方 API 真正删掉条目 —— 只写 0 的话
+        // Crane 的「per-container 已读判定」仍可能认为未读。
+        if (!g_imp_reset) discover_reset_api();
+        if (g_imp_reset && g_resetOwnerName) {
+            Class owner = NSClassFromString(g_resetOwnerName);
+            ((resetBadge_t)g_imp_reset)(owner, g_sel_reset, containerID, appID);
+        }
         if (orig_SetContainerCount) orig_SetContainerCount(appID, containerID, 0);
         mark_cleared(appID, YES);
         return;
@@ -479,7 +565,7 @@ static void install_hooks(void) {
 __attribute__((constructor)) static void CBFInit(void) {
     @autoreleasepool {
         CBFLogInit();
-        CBFLog(@"==== CraneBadgeFix v0.5 加载 ====");
+        CBFLog(@"==== CraneBadgeFix v0.6 加载 ====");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

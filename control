@@ -1,7 +1,7 @@
 Package: com.82flex.cranebadgefix
 Name: Crane Badge Reset Fix
-Version: 0.5.0
-Description: 修复 Crane 1.3.17 多开应用（微信等）消息已读后，图标角标已消失但快捷菜单（Haptic Touch）仍残留 per-container 未读数的问题。本版三管齐下：(1) 用 slide+vmaddr 直接对 CraneSB 内部 badge 函数下钩（这些符号未导出，dlsym 取不到）；(2) 新增 ObjC runtime 动态 hook badgeValueForBundleID: / setBadgeValue:forBundleID: 覆盖快捷菜单的 ObjC 层出口；(3) 调用 Crane 自带的 crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier: 官方清零 API 真正删除 BadgeStore 条目。调试日志落盘到 /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log。安装后不再自动重启 SpringBoard，需手动重启一次才生效。
+Version: 0.6.0
+Description: 修复 Crane 1.3.17 多开应用（微信等）消息已读后，图标角标已消失但快捷菜单（Haptic Touch）仍残留 per-container 未读数、重启 SpringBoard 后角标复活的问题。本版：(1) 修复 v0.5 日志只剩最后一行的 bug（createFileAtPath 会截断文件）；(2) 日志时间戳改本地时区；(3) 启动清零从 12 秒延长到 30 秒并改为「主动清零」—— 直接解析 BadgeStore.plist 取出所有 appID+containerID，用 Crane 自带 crane_resetBadgeOfContainerWithIdentifier:ofApplicationWithIdentifier: 官方 API 逐个清除，不再依赖是否观察到调用；(4) 同时修正 plist 路径（Crane 用的是无 /var/jb 前缀的真实路径）。安装后不自动重启 SpringBoard，需手动重启一次才生效。
 Maintainer: 82flex
 Author: 82flex
 Section: Tweaks

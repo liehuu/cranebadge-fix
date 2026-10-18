@@ -2,6 +2,32 @@
 
 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、但快捷菜单仍残留 per-container 未读数」的独立补丁 tweak。
 
+## 📄 怎么看日志（v0.5 起）
+
+日志**落盘到文件**，不用连电脑：
+
+```
+/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log
+/var/mobile/Library/Crane/CraneBadgeFix.log     （非 RootHide 路径兜底）
+/tmp/CraneBadgeFix.log                          （前两者都失败时）
+```
+
+查看方式（任选）：
+- **手机端**：Filza /「文稿」App 打开上面路径直接看。
+- **SSH**：`cat /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log`，或 `tail -f` 实时跟。
+- **电脑端**：`Console.app` 或 `idevicesyslog` 过滤 `[CraneBadgeFix]`（NSLog 同步进 os_log）。
+
+`postinst` 每次安装都会清空旧日志，所以装完重启后取到的就是这一次的完整日志。
+
+日志里最关键的几行：
+```
+已 hook(C) _badgeCountStoreGetContainerCount @0x...            ← C 层 hook 是否挂上
+已 hook badgeValueForBundleID -> -[XXX badgeValueForBundleID:]  ← ObjC 层是否挂上
+找到 Crane 官方清零 API: -[XXX crane_resetBadge...]            ← reset API 是否可用
+[badgeValueForBundleID:] app=com.tencent.xin value=3            ← 快捷菜单每次读取的实际值
+_privSetBadgeNumberHook 被调用 badgeNumber=0 app=...            ← 微信清角标信号
+```
+
 ## ⚠️ v0.3 失效复盘（重要，避免重蹈）
 
 v0.3 用 `dlsym(CraneSB, "_badgeCountStoreGetContainerCount")` 这类按名解析。

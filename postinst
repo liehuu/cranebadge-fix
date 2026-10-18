@@ -1,9 +1,26 @@
 #!/bin/sh
-# 安装后：清掉 Crane 的 BadgeStore 存量缓存。
-# 注意：这里 **不再** killall SpringBoard —— 避免安装即重启导致用户不适 / 打断使用。
-# 补丁（ CraneBadgeFix.dylib ）需在下次 SpringBoard 启动时加载，
-# 其「启动清零模式」会把 Crane 从 plist 恢复的历史角标压成 0 并回写 plist，
-# 因此装完补丁请手动重启一次 SpringBoard（设置里重启，或关机重启）才会生效。
+# 安装后处理：
+#   1) 删掉 Crane 的 BadgeStore 存量缓存
+#   2) 重置补丁自身的日志文件，方便你直接查看本次安装后的完整日志
+#
+# 重要：这里 **不再** killall SpringBoard —— 避免安装即重启。
+# 补丁需在下次 SpringBoard 启动时加载，其「启动清零模式」会把 Crane 从 plist
+# 恢复的历史角标压成 0 并回写 plist。因此装完补丁请手动重启一次 SpringBoard。
+#
+# 日志查看（重启 SpringBoard 后再取）：
+#   /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log
+#   （即 Crane 自己的数据目录，可用 Filza / 文稿 App 打开，或 SSH 后 cat）
+
 rm -f /var/jb/var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
 rm -f /var/mobile/Library/Crane/BadgeStore.plist 2>/dev/null
+
+rm -f /var/jb/var/mobile/Library/Crane/CraneBadgeFix.log 2>/dev/null
+rm -f /var/mobile/Library/Crane/CraneBadgeFix.log 2>/dev/null
+
+mkdir -p /var/jb/var/mobile/Library/Crane 2>/dev/null
+mkdir -p /var/mobile/Library/Crane 2>/dev/null
+
+echo "CraneBadgeFix 已安装。"
+echo "请手动重启一次 SpringBoard（设置里重启 或 关机重启）使补丁生效。"
+echo "生效后日志在：/var/jb/var/mobile/Library/Crane/CraneBadgeFix.log"
 exit 0

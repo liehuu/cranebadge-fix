@@ -1,5 +1,5 @@
 /*
- * CraneBadgeFix v0.9.1（回归修复 + 三处隐患根治）
+ * CraneBadgeFix v0.9.3（启动清零误吞新消息 + DEFAULT 容器覆盖 + 移除失效探针）
  * ==============================
  * 修复 Crane 1.3.17 多开应用（微信等）「消息已读后，图标角标已消失、
  * 但快捷菜单（Haptic Touch）仍残留 per-container 未读数」。
@@ -24,7 +24,7 @@
  *   不区分「新消息」与「历史残留」。用户恰好在启动清零窗口内（30 秒）收到消息，
  *   于是真实新消息和图标红点一起被吞。
  *   → 本版拆成两个独立条件：zeroMode 只压制「plist 基线未变」的容器，
- *     有新消息的一律放过（zero_mode_should_suppress / app_has_live_unread）。
+ *     有新消息的一律放过（zero_mode_should_suppress / app_safe_to_suppress）。
  *
  * ── 根因 2：harvest 把新消息误登记为残留 ─────────────────────────
  *   schedule_zero_mode 每 3 秒重跑 harvest_from_plist()，
@@ -175,6 +175,56 @@
  *      `[fm fileExistsAtPath:isDirectory:]` 返回的是「是否存在」而非 isDirectory 值，
  *      导致所有条目误报 (dir)。改用 attributesOfItemAtPath 的 NSFileType 判断。
  *
+ * ── v0.9.2：作废「未读下降=已读」错误判据（v0.9.0/v0.9.1 的核心错误）─────
+ * v0.9.1 实机日志铁证（00:05:11~00:05:16，同一模式连续出现 5 次）：
+ *   00:05:11.828 ↓ 未读下降[A] app=com.tencent.xin 4 → 3
+ *   00:05:11.832 [写] SetContainerCount count=3     ← 同一个值被写回
+ *   00:05:13.449 ↓ 未读下降[A] app=com.tencent.xin 4 → 2
+ *   00:05:13.454 [写] SetContainerCount count=2     ← 又是同一个值
+ * → A 通道的 v 与 Crane 写入 per-container 的 count 是**同一份数据**，
+ *   「下降」只是 Crane 内部重算的中间态，**不是**「用户已读」。
+ *   v0.9.0/v0.9.1 据此做 purge，5 次全部「清理残留 0 个」，判据完全无效。
+ * → 方法论教训：看到信号「会下降」就断定它代表用户行为是过度解读；
+ *   必须检查**该信号与下游写入是否严格配对**——配对就说明是同一份数据。
+ * 同版还修掉：清零标记被同毫秒撤销（加 3 秒保持期）、harvest 吞新消息
+ * （改为只在启动瞬间登记一次）、日志降噪。
+ *
+ * ── v0.9.3：依据 v0.9.2 实机日志（00:27~00:30）再修三个缺陷 ────────────
+ * 缺陷一（00:27:34 铁证）：启动清零窗口误吞新消息
+ *   00:27:05.699 启动清零：plist 历史残留 0 个（plist 不存在）
+ *   00:27:34.221 抑制 app 角标 1（清零窗口内、全部为残留）  ← 新消息被吞
+ *   00:27:34.807 抑制 app 角标 2                           ← 又被吞
+ *   根因：app_has_live_unread 在该 app 无任何已登记容器时返回 NO，
+ *   调用方据此判定「全部为残留」。**没有残留可清时，恰恰最不该压制。**
+ *   修：改为 app_safe_to_suppress——「有已知容器且全部未超基线」才压。
+ * 缺陷二（00:29:23 铁证）：DEFAULT 容器未被任何机制覆盖
+ *   GetAppCount = 各容器求和（00:29:23.841 → 4 = DEFAULT 1 + UUID 3；
+ *   00:29:24.727 → 5 = DEFAULT 2 + UUID 3）。DEFAULT 不被 Crane 持久化
+ *   进 plist（00:29:51 重启后 harvest 只登记到 UUID，DEFAULT 的 2 条
+ *   未读就此丢失），只有运行期 remember_container 知道它存在。
+ *   修：app_safe_to_suppress 把运行期已知容器一并纳入——非登记容器
+ *   在启动后却有数，只可能是新消息（启动时 Crane 内存=plist）。
+ * 缺陷三（00:29:55.040 铁证）：setExisting 探针签名错误，整体移除
+ *   [?] SetExistingBadge app=__NSCFString count=10761763936
+ *   —— appID 不是 bundle id、count 明显是误读参数。无信息量的 hook
+ *   只会误导后续排查。同帧的另一条证据反而更有价值：00:29:55.037
+ *   读取被压成 0 之后，00:29:55.040 Crane 立刻调 setExistingBadge
+ *   推送——**Crane 是用我们 hook 的 getter 取值再推给 SpringBoard 的**，
+ *   压制 getter 就能让图标归零，该路径已由现有 hook 覆盖。
+ * 另修：v0.9.2 降噪没降干净——rep_GetContainerCount 里 v0.8.3 遗留的
+ *   无条件读日志与条件打印并存（值变化时打两遍），已删除。
+ * 缺陷四（代码审查发现，v0.9.2 潜在回归，比前三个更严重）：
+ *   v0.9.2 修「清零标记被同毫秒撤销」时，把 rep_SetContainerCount 里的
+ *   mark_cleared(NO) **触发点**也一起删了，且没有安排替代路径 →
+ *   一旦发生 v=0（用户全部已读），is_cleared 永远停在 YES，
+ *   之后的新消息读取侧一律返回 0，**角标永远不亮**。
+ *   v0.9.2 日志没抓到 v=0（用户没清空未读）所以没暴露；v0.9.1 日志
+ *   （00:05:11.832 已清零标记）证明 v=0 确实会出现。
+ *   修：触发点放在 rep_PrivSetBadge 的 v>0 分支（微信上报正值未读），
+ *   由 3 秒保持期挡掉 v=0 后同毫秒/紧接着的撤销请求并到期补撤销；
+ *   旧值回写发生在 orig_PrivSetBadge 内部、不经过本函数，天然不误触发。
+ *   一直没有 v>0 时 is_cleared 持续保持 → 残留角标永不复活（核心目的）。
+ *
  * ── v0.9.0：找到「快捷菜单」的第一个真根因并修复 ────────────────────
  * v0.8.3 实机日志第一次看清了完整数据流（23:37:07~23:37:20）：
  *
@@ -209,9 +259,8 @@
  *   时机选在 rep_PrivSetBadge（系统设置角标的入口）：在它把新值写入 Crane 之前
  *   先清残留，既不吞掉即将到来的新消息（写入仍透传），又让后续菜单读取拿到 0。
  *
- * 同时新增 setExisting 探针：hook `_setExistingBadgeCountForApplication`@0x69f8
- *   （symtab 里一直存在但从未 hook）。本版**只打日志不改行为** ——
- *   该函数可能同时服务图标角标路径，贸然改返回值会让图标角标也挂掉。
+ * 同时新增 setExisting 探针（v0.9.3 已整体移除，签名实测错误，见 v0.9.3 节）：
+ *   hook `_setExistingBadgeCountForApplication`@0x69f8，只打日志不改行为。
  *
  * 编译：.github/workflows/build.yml 直编，纯 arm64e。
  */
@@ -406,12 +455,14 @@ static BOOL        g_arm64e = NO;
 // g_cranePath 已在文件头部前置声明（供 badge_store_paths() 使用）
 
 typedef struct {
-    uintptr_t getCnt, setCnt, getApp, setExisting, privSet;
+    uintptr_t getCnt, setCnt, getApp, privSet;
 } crane_offs_t;
 
 // 1.3.17 symtab 实测偏移（arm64e / arm64 两分片）
-static const crane_offs_t kOffArm64e = { 0x6acc, 0x6f54, 0x6c4c, 0x69f8, 0x7c5c };
-static const crane_offs_t kOffArm64  = { 0x6734, 0x6b34, 0x689c, 0x6590, 0x7774 };
+// ⚠️ v0.9.3 移除 setExisting（0x69f8 / 0x6590）：探针实测签名错误，
+//   详见文件头 v0.9.3 节与下方「已移除」说明块。
+static const crane_offs_t kOffArm64e = { 0x6acc, 0x6f54, 0x6c4c, 0x7c5c };
+static const crane_offs_t kOffArm64  = { 0x6734, 0x6b34, 0x689c, 0x7774 };
 
 static const crane_offs_t *cur_offs(void) { return g_arm64e ? &kOffArm64e : &kOffArm64; }
 
@@ -503,31 +554,19 @@ static void *crane_fn(uintptr_t off) {
     return (void *)(g_slide + off);
 }
 
-// ── v0.9.0：新增 hook _setExistingBadgeCountForApplication ────────────
+// ── ⛔ v0.9.3 已移除：_setExistingBadgeCountForApplication 探针 ──────────
 //
-// 背景（v0.8.3 实机日志的决定性证据）：
-//   写路径确认走 _badgeCountStoreSetContainerCount（`[写] SetContainerCount` 大量出现）；
-//   读路径确认走 _badgeCountStoreGetContainerCount（快捷菜单在轮询它，见 23:37:40/55/38:04）；
-//   **但微信全程没发过一次 badgeNumber=0** —— 最低只到 v=1。
-//   而 is_cleared 标记只在 v==0 时置位 → 快捷菜单永远不被抑制。
+// v0.9.0 加入（只日志不改行为），v0.9.2 实机日志证明**签名假设是错的**：
+//   00:29:55.040 [?] SetExistingBadge app=__NSCFString count=10761763936
+//   - appID 打出来是 __NSCFString（不是 bundle id）
+//   - count=10761763936 明显是误读参数（指针/错位数据被当成整数）
+// 无信息量的 hook 只会误导后续排查，整体移除（含 typedef / orig 指针 /
+// g_lastExistingCount / g_lastExistingApp 死代码）。
 //
-// 这是「快捷菜单修不掉」的第一个真正根因：**清零信号永远不来**。
-//
-// 观察到一个更本质的事实：图标角标清零正确，但 Crane 的 per-container 缓存不清。
-// 说明微信是直接调系统 UIKitApplication 的 setBadgeNumber:，
-// 而 Crane 只是**旁路读取** per-container 缓存去画快捷菜单 —— 它自己不知道用户已读。
-//
-// 因此新增 hook `_setExistingBadgeCountForApplication`（symtab 偏移 0x69f8）：
-// 从函数名语义看，它是「给某 app 设置现有角标数」的入口，
-// 极可能是 Crane 在菜单展示前把缓存值写进去的地方。
-// 本版**先只加日志**探明它的签名与调用时机（参数个数/类型/值），
-// 确认后再决定是压 0 还是改返回值 —— 不盲目下钩改行为。
-typedef void (*setExisting_t)(id self, SEL _cmd, id appID, unsigned long long count);
-static setExisting_t orig_SetExistingBadge = NULL;
-
-// v0.9.0 记录最近一次观察到的 setExisting 调用，用于诊断对照
-static unsigned long long g_lastExistingCount = 0;
-static NSString         *g_lastExistingApp = nil;
+// 同帧的另一条证据反而更有价值：00:29:55.037 读取被压成 0 之后，
+// 00:29:55.040 Crane 立刻调 setExistingBadge 推送——说明 **Crane 是用
+// 我们 hook 的 getter 取值再推给 SpringBoard 的**，压制 getter 就能让
+// 图标归零，这条路径已由 GetContainerCount/GetAppCount 的 hook 覆盖。
 
 #pragma mark - 状态
 
@@ -572,6 +611,7 @@ static BOOL is_inited(void) {
 static BOOL is_string(id o) { return o && [o isKindOfClass:[NSString class]]; }
 
 // ★★ v0.9.2：清零标记加**保持期**，防止被同一事件里的回写立刻抵消。
+// ★★ v0.9.3：补上「保持期挡掉的撤销」的到期补撤销 + 明确撤销触发点。
 //
 // 实机日志铁证（v0.9.1，00:05:11.832，五次全部如此）：
 //   00:05:11.832 已清零标记: com.tencent.xin      ← mark_cleared(YES)
@@ -582,8 +622,26 @@ static BOOL is_string(id o) { return o && [o isKindOfClass:[NSString class]]; }
 // Crane 在其中把 count>0 回写进容器 → 触发 rep_SetContainerCount 的
 // mark_cleared(NO) → 刚设上的标记被**同一毫秒**撤销 → 读取侧压制从未生效。
 //
-// 解法：置位后进入「保持期」（CLEAR_HOLD_SECONDS），期内忽略撤销请求。
-// 保持期过后若 Crane 又回写非零，说明确有新消息，此时才真正撤销。
+// v0.9.2 的解法：置位后进入「保持期」（CLEAR_HOLD_SECONDS），期内忽略撤销请求。
+// ⚠️ 但 v0.9.2 同时把撤销的**触发点**（rep_SetContainerCount 里的 mark_cleared(NO)）
+//    也一起删了，且没有安排任何替代路径 → 一旦发生 v=0（用户全部已读），
+//    is_cleared 将**永远停在 YES**：之后来的新消息，读取侧一律返回 0，
+//    角标永远不亮。v0.9.2 实机日志里没出现 v=0（用户没把未读清空），
+//    所以这个潜在回归没有暴露——但 v0.9.1 日志证明 v=0 是会出现的。
+//
+// v0.9.3 的完整设计：
+//    ① 撤销触发点 = rep_PrivSetBadge 的 **v>0 分支**（微信上报正值未读）。
+//      ⚠️ 不能放在 rep_SetContainerCount：容器写回分「v=0 后同毫秒的 Crane
+//      旧值回写」与「微信新未读上报」两种，从数值上无法区分，放那里会误撤销
+//      → 残留复活。而 v>0 是微信**主动上报**的正值未读，才是确定信号；
+//      且旧值回写发生在 orig_PrivSetBadge 内部，不经过 rep_PrivSetBadge，
+//      天然不会误触发。
+//    ② 保持期内忽略撤销请求（挡掉 v=0 后 1 秒内就到来的 v>0），但**到期后
+//       补一次撤销**（见下方 dispatch_after）——否则「v=0 后立刻来新消息」
+//       会被保持期吞掉且永不补显示。
+//    ③ 保持期之外的 v>0 → 真正撤销 → 角标恢复显示。
+//    ④ 没有任何 v>0 时（用户已读后一直没有新消息）→ is_cleared 一直保持，
+//       残留角标永远不会复活——这正是本补丁的核心目的。
 static NSMutableDictionary *g_clearedAt = nil;   // appID -> @(置位时的 uptime 秒)
 
 #define CLEAR_HOLD_SECONDS 3.0
@@ -607,9 +665,28 @@ static void mark_cleared(id appID, BOOL cleared) {
         NSNumber *at = g_clearedAt[appID];
         if (at && (uptime_now() - at.doubleValue) < CLEAR_HOLD_SECONDS) {
             // ★ 保持期内：忽略撤销，避免被同一次事件的 Crane 回写抵消
-            CBFLog(@"保持期内忽略撤销: %@（剩余 %.1f 秒）",
-                   appID, CLEAR_HOLD_SECONDS - (uptime_now() - at.doubleValue));
+            double remain = CLEAR_HOLD_SECONDS - (uptime_now() - at.doubleValue);
+            CBFLog(@"保持期内忽略撤销: %@（剩余 %.1f 秒）", appID, remain);
+            double stamp = at.doubleValue;
             pthread_mutex_unlock(&g_lock);
+            // ★★ v0.9.3：被保持期挡掉的撤销不能就这么丢了。
+            //   场景：v=0（全部已读）后 1 秒来了新消息 → 写回被保持期挡掉，
+            //   若之后没有新的写回，角标会永远停在被压制的状态。
+            //   到期后补一次撤销；补之前校验时间戳——若期间又来了新的 v=0
+            //   （用户再次全部已读），时间戳已被刷新，此时不补刀，保持压制。
+            NSString *appCopy = [appID copy];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(remain * NSEC_PER_SEC)),
+                           dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                pthread_mutex_lock(&g_lock);
+                NSNumber *nowAt = g_clearedAt[appCopy];
+                BOOL stillMine = nowAt && (nowAt.doubleValue == stamp) &&
+                                 [g_clearedApps containsObject:appCopy];
+                pthread_mutex_unlock(&g_lock);
+                if (stillMine) {
+                    CBFLog(@"保持期到点补撤销: %@", appCopy);
+                    mark_cleared(appCopy, NO);   // 保持期已过，必然真正撤销
+                }
+            });
             return;
         }
         if ([g_clearedApps containsObject:appID]) {
@@ -659,7 +736,11 @@ static void remember_container(id appID, id containerID) {
 //   且每次下降都会置 is_cleared(YES)，开启一条**错误的压制路径**。
 //
 // 现在只保留唯一确定性信号：v == 0（实测提醒事项 / SideStore / 抖音确实会发 v=0）。
-// 微信实测从不发 0（全程 v ≥ 1），这是微信自身行为，本补丁不强求。
+// ⚠️ v0.9.3 修正表述（避免重蹈「过度解读」覆辙）：
+//   微信**全部读完**时确实会发 v=0 —— v0.9.1 日志 00:05:11.832 的「已清零标记」
+//   就是 v=0 分支置的位。v0.9.2 日志（00:27~00:30）里没出现 v=0，只是因为
+//   那段日志用户没把未读清空（最少也剩 1~3 条）。v=0 链路（purge_containers +
+//   3 秒保持期）**尚未在 v0.9.2 实机验证**，需要一次「把未读一条不剩读完」的测试。
 
 #pragma mark - ⛔ 已移除：Crane 官方 crane_resetBadge... API 调用
 //
@@ -1134,38 +1215,78 @@ static BOOL zero_mode_should_suppress(id appID, id containerID, unsigned long lo
     return YES;
 }
 
-// 该 app 下是否**至少有一个容器**出现了新消息（当前 count 高于 harvest 基线）。
-// 用于 rep_GetAppCount：只要有一个容器有真新消息，就不整体压制图标角标。
-static BOOL app_has_live_unread(id appID) {
-    if (!is_string(appID)) return NO;
+// ★★ v0.9.3：zeroMode 期间，rep_GetAppCount 是否可以整体压制该 app 的图标角标。
+// 判据 = 该 app **至少有一个已知容器**，且全部已知容器都仍是「未超启动基线」的残留。
+//
+// ⚠️ v0.9.2 铁证缺陷（00:27:34，本版修）：
+//   00:27:05.699 启动清零：plist 历史残留 0 个（plist 不存在）
+//   00:27:34.221 [读] GetAppCount → 1
+//   00:27:34.221 抑制 app 角标 1（清零窗口内、全部为残留）  ← 真实新消息被吞
+//   00:27:34.807 抑制 app 角标 2                           ← 又被吞
+//   根因：旧函数 app_has_live_unread 在该 app 没有任何已登记容器时返回 NO，
+//   调用方 `!app_has_live_unread` 据此判定「全部为残留」→ 开压。
+//   **没有残留可清的时候，恰恰最不该压制。**
+//
+// ⚠️ v0.9.3 同时覆盖 DEFAULT 容器（00:29:23 铁证）：
+//   GetAppCount = 各容器求和（→ 4 = DEFAULT 1 + UUID 3；→ 5 = DEFAULT 2 + UUID 3）。
+//   DEFAULT 不被 Crane 持久化进 plist（00:29:51 重启后 harvest 只登记到 UUID，
+//   DEFAULT 的未读就此丢失），只有运行期 remember_container 知道它存在。
+//   不纳入判据的后果：它的未读既不被压制也不被清零，图标角标永远带着它。
+//
+// 数据源 = 已登记残留（plist 基线比对）+ 运行期已知容器（g_containers）：
+//   · 已登记容器：plist 当前值 > 基线 ⇒ 期间来了新消息 ⇒ 不压
+//   · 非登记容器（如 DEFAULT）：启动时 plist 里没有它，启动后却有数
+//     ⇒ 只可能是新消息（启动时 Crane 内存=plist）⇒ 不压
+static BOOL app_safe_to_suppress(id appID) {
+    if (!is_string(appID)) return NO;   // 非字符串 appID：无从判断，不压
 
-    // 该 app 的所有已知残留容器
+    // ① 运行期已知容器（harvest 登记时会 remember_container，plist 残留也在此集合内）
+    NSMutableSet *cids = [NSMutableSet set];
+    pthread_mutex_lock(&g_lock);
+    NSMutableSet *known = g_containers[appID];
+    if (known.count) [cids unionSet:known];
+    pthread_mutex_unlock(&g_lock);
+
+    // ② 已登记残留的 pair（基线比对用）
     pthread_mutex_lock(&g_harvestLock);
     NSArray *pairs = [g_harvested allKeys];
     pthread_mutex_unlock(&g_harvestLock);
-    if (!pairs.count) return NO;
-
     NSString *prefix = [appID stringByAppendingString:@"|"];
-    NSMutableArray *mine = [NSMutableArray array];
-    for (NSString *p in pairs) if ([p hasPrefix:prefix]) [mine addObject:p];
-    if (!mine.count) return NO;
+    NSMutableArray *harvestedMine = [NSMutableArray array];
+    for (NSString *p in pairs) if ([p hasPrefix:prefix]) [harvestedMine addObject:p];
 
-    // 一次重读 plist，逐个比对基线
+    // 一个已知容器都没有 ⇒ plist 里也不会有残留（harvest 会 remember）⇒ 无可压对象
+    if (!cids.count && !harvestedMine.count) return NO;
+
+    // 一次重读 plist，供已登记容器做基线比对
     NSMutableDictionary *cur = [NSMutableDictionary dictionary];
     snapshot_current_counts(cur);
-    for (NSString *p in mine) {
+
+    for (NSString *p in harvestedMine) {
         NSArray *kv = [p componentsSeparatedByString:@"|"];
         if (kv.count != 2) continue;
+        [cids removeObject:kv[1]];      // 已登记的走上方的基线比对，避免重复处理
         long long baseline = 0;
         if (!residual_baseline(kv[0], kv[1], &baseline)) continue;
         NSNumber *curNum = cur[p];
         long long curNow = curNum ? curNum.longLongValue : 0;
         if (curNow > baseline) {
-            CBFLog(@"app_has_live_unread: %@ 有新消息容器 %@|%@（%lld > %lld）", appID, kv[0], kv[1], curNow, baseline);
-            return YES;
+            CBFLog(@"app_safe_to_suppress: %@ 有新消息容器 %@|%@（%lld > 基线 %lld）→ 不压",
+                   appID, kv[0], kv[1], curNow, baseline);
+            return NO;
         }
     }
-    return NO;
+
+    // ③ 非登记容器：直调原函数取当前值（不经过我们的 hook，不持锁，无重入风险）
+    for (NSString *cid in cids) {
+        unsigned long long now = orig_GetContainerCount ? orig_GetContainerCount(appID, cid, 1) : 0;
+        if (now > 0) {
+            CBFLog(@"app_safe_to_suppress: %@ 有未登记容器 %@ 当前 %llu（启动时 plist 无此容器，视为新消息）→ 不压",
+                   appID, cid, now);
+            return NO;
+        }
+    }
+    return YES;   // 全部已知容器都是未变残留 ⇒ 可以整体压制
 }
 
 static void schedule_zero_mode(void) {
@@ -1217,9 +1338,9 @@ static unsigned long long rep_GetContainerCount(id appID, id containerID, unsign
             if (!pv || ![pv isEqualToString:v])
                 CBFLog(@"[读] GetContainerCount app=%@ cid=%@ → %llu", appID, containerID, cnt);
         }
-        // ★ v0.8.3 新增诊断：快捷菜单（_crane_replacementMenu @0xfb88 与
-        //   _initApplicationShortcutLateHooks_12Down @0x129e0）都调用本函数。
-        CBFLog(@"[读] GetContainerCount app=%@ cid=%@ → %llu", appID, containerID, cnt);
+        // ⚠️ v0.9.3：此处原本还有一条 v0.8.3 遗留的**无条件**读日志，与上面的
+        //   条件打印并存，导致值变化时同一行打两遍（00:27:34.221 连续两行 → 1），
+        //   降噪等于没做。已删除。
     }
     if (cnt == 0) return 0;
 
@@ -1272,9 +1393,11 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
             CBFLog(@"[读] GetAppCount app=%@ → %llu", appID, cnt);
     }
 
-    // ★ v0.9.1：zeroMode 期间，只有当该 app 的**每一个**已知容器都没有新消息时才压制。
-    //   只要有一个容器来了新消息，就如实返回，避免吞掉图标角标。
-    if (g_zeroMode && !app_has_live_unread(appID)) {
+    // ★ v0.9.1：zeroMode 期间，只有当该 app **有已知容器且全部无新消息**时才压制。
+    //   · 一个已知容器都没有 ⇒ 没有残留可清（harvest 会 remember，plist 有残留就一定有）
+    //     ⇒ 不压。v0.9.2 在这里误吞过新消息（00:27:34 铁证，见 app_safe_to_suppress）。
+    //   · 任一新消息容器（含 DEFAULT 这类未登记容器）⇒ 不压，避免吞掉图标角标。
+    if (g_zeroMode && app_safe_to_suppress(appID)) {
         CBFLog(@"抑制 app 角标 %llu app=%@（清零窗口内、全部为残留）", cnt, appID);
         return 0;
     }
@@ -1285,38 +1408,19 @@ static unsigned long long rep_GetAppCount(id appID, unsigned long long flag) {
     return cnt;
 }
 
-// ── v0.9.0：setExisting 的探针实现 ────────────────────────────────────
-// ⚠️ 本版**只记录不修改**：先确认签名与调用时机，再决定压不压 0。
-//   贸然改这个函数的入参/返回值有风险（它可能同时服务于图标角标路径，
-//   改错会让图标角标也挂掉）。宁可多跑一轮，不可再翻车。
-static void rep_SetExistingBadge(id self, SEL _cmd, id appID, unsigned long long count) {
-    g_lastExistingCount = count;
-    g_lastExistingApp = is_string(appID) ? appID : nil;
-    if (count > 0) {
-        CBFLog(@"[?] SetExistingBadge app=%@ count=%llu  ← 探针：确认签名与调用时机",
-               appID, count);
-    }
-    if (orig_SetExistingBadge) orig_SetExistingBadge(self, _cmd, appID, count);
-}
-
 static void rep_SetContainerCount(id appID, id containerID, unsigned long long count) {
     remember_container(appID, containerID);
 
-    // ⚠️ v0.9.2：这里的 mark_cleared 调用**全部移除**，只保留原样透传。
-    //
-    // 原因（v0.9.1 实机日志铁证，五次全部如此）：
-    //   00:05:11.832 已清零标记: com.tencent.xin      ← rep_PrivSetBadge 的 v=0/下降分支置位
-    //   00:05:11.832 撤销清零标记: com.tencent.xin    ← 本函数 mark_cleared(NO) 撤销
-    //   00:05:11.832 [写] SetContainerCount count=3   ← 同一毫秒内的 Crane 回写
-    //
-    // Crane 在处理清零信号时会**立刻**把 count>0 回写进容器，
-    // 于是 rep_PrivSetBadge 刚设上的抑制被本函数在同一毫秒撤销，
-    // 读取侧（GetContainerCount/GetAppCount）的压制从未真正生效 —— 这就是
-    // 「快捷菜单红点清不掉」在 v0.9.0/v0.9.1 上的机制性原因。
-    //
-    // 现在：清零标记**只**由 rep_PrivSetBadge 的 v==0 分支设置，
-    // 且带 3 秒保持期（见 mark_cleared），期间内的回写不撤销它。
-    // 新消息到来会自然体现在 count 上（>0），读取侧如实返回。
+    // ⚠️ v0.9.3 注意：本函数**不**做清零标记撤销（曾在此处放触发点，已移除）。
+    //   原因：容器写回分两种，从数值上无法区分——
+    //     ① v=0 后同毫秒，Crane 把自己内存里的旧值刷回来（v0.9.1 铁证：
+    //        已清零标记 → 同毫秒 [写] count=3）。这是**旧值回写**，
+    //        撤销它 = 残留复活（用户最初报的 bug）。
+    //     ② 微信新的未读上报（每次 [写] 前面都有一次 privSetBadge 的 v 调用）。
+    //    ①由 3 秒保持期挡掉；②的撤销触发点改放在 rep_PrivSetBadge 的
+    //    v>0 分支——v>0 是微信主动上报的正值未读，才是「新消息」的确定信号。
+    //   （v0.9.2 曾把撤销触发点整体删掉且无替代 → v=0 后 is_cleared 永远
+    //    停在 YES、新消息角标永远不亮，是更严重的潜在回归。）
 
     // ★ v0.8.3 诊断：这是 Crane 写入 per-container 角标缓存的唯一入口（实测 20+ 次）。
     CBFLog(@"[写] SetContainerCount app=%@ cid=%@ count=%llu", appID, containerID, count);
@@ -1338,6 +1442,14 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
         CBFLog(@"★★ 清零信号 v=0 app=%@ 已知容器=%lu → 已清 Crane 缓存并抑制读取", bundleID, (unsigned long)before);
         mark_cleared(bundleID, YES);
     } else if (v > 0) {
+        // ★★ v0.9.3：v>0 是「微信上报了正值未读」——**新消息的确定信号**，
+        //   也是清零标记的撤销触发点（v0.9.2 漏掉的就是这个，见 mark_cleared 注释）。
+        //   · 与 3 秒保持期配合：v=0 后同毫秒的 Crane 旧值回写是**容器写回**、
+        //     不经过本函数，天然不会误触发；v=0 后紧接着的 v>0（保持期内）
+        //     会被 mark_cleared 忽略并安排到期补撤销。
+        //   · 未设置过 is_cleared 的 app（含提醒事项/SideStore/抖音等其他 app）
+        //     这里是纯 no-op，不影响任何现有行为。
+        if (is_cleared(bundleID)) mark_cleared(bundleID, NO);
         // ═══ ★★ v0.9.2：作废「未读下降 = 已读」判据（v0.9.0/v0.9.1 的核心错误）═══
         //
         // 实机日志铁证（v0.9.1，00:05:11~00:05:16，五次全部如此）：
@@ -1353,13 +1465,17 @@ static void rep_PrivSetBadge(id self, SEL _cmd, id badgeNumberObj, id bundleID, 
         //
         // 现在的处理：v > 0 一律**如实透传**，不做任何 purge。
         // 已读清零只认 v == 0 这一个确定性信号（其他 app 的提醒事项/SideStore
-        // 实测确实会发 v=0；微信实测从不发 0 —— 这是微信侧的行为，本补丁不强求）。
+        // 实测确实会发 v=0）。⚠️ v0.9.3 修正：微信并非「从不发 0」——
+        // v0.9.1 日志里 v=0 出现过（00:05:11.832 已清零标记）；v0.9.2 日志没抓到
+        // 只是因为用户没把未读清空。v=0 链路尚待一次「全部读完」的实机验证。
         //
-        // ⚠️ v>0 时**不能**在这里 mark_cleared(NO)。
-        //   v0.9.1 的错误：v==0 分支刚 mark_cleared(YES)，紧接着 orig_PrivSetBadge
-        //   让 Crane 回写 count>0 → rep_SetContainerCount 再 mark_cleared(NO)，
-        //   两者在同一毫秒内互相抵消 → 读取侧压制从未生效（日志五次「已清零标记」
-        //   后面紧跟「撤销清零标记」）。现由 mark_cleared 的**保持期**统一处理。
+        // ⚠️ v0.9.3 更正上面那条旧警告：v>0 时**可以**在这里 mark_cleared(NO)，
+        //   前提是 mark_cleared 内部有保持期。v0.9.1 的错误不是「在 v>0 撤销」，
+        //   而是「撤销发生在保持期概念存在之前」——v==0 刚置位，紧接着 Crane 回写
+        //   count>0 触发撤销，同一毫秒互相抵消，读取侧压制从未生效（日志五次
+        //   「已清零标记」后面紧跟「撤销清零标记」）。
+        //   现在由 mark_cleared 的**保持期**统一裁决：保持期内的撤销一律忽略
+        //   （并安排到期补撤销），保持期之外的撤销才真正生效。
         CBFLog(@"非清零信号 v=%lld app=%@ → 如实透传", v, bundleID);
     } else {
         CBFLog(@"异常信号 v=%lld app=%@（既非 0 也非正数，不做处理）", v, bundleID);
@@ -1410,9 +1526,8 @@ static void install_hooks(void) {
     hook_addr((void **)&orig_SetContainerCount, o->setCnt,  "_badgeCountStoreSetContainerCount", (void *)rep_SetContainerCount);
     hook_addr((void **)&orig_GetAppCount,       o->getApp,  "_badgeCountStoreGetAppCount",       (void *)rep_GetAppCount);
     hook_addr((void **)&orig_PrivSetBadge,      o->privSet, "_privSetBadgeNumberHook",          (void *)rep_PrivSetBadge);
-    // ★ v0.9.0：新增探针（只日志不改行为）。这个符号不在 LC_DYLD_EXPORTS_TRIE，
-    //   dlsym 会失败并自动回退到 slide+vmaddr 地址下钩（hook_addr 内部已实现）。
-    hook_addr((void **)&orig_SetExistingBadge, o->setExisting, "_setExistingBadgeCountForApplication", (void *)rep_SetExistingBadge);
+    // ⚠️ v0.9.3 移除 setExisting 探针：签名实测错误（app=__NSCFString、
+    //   count=10761763936），无信息量。详见文件头 v0.9.3 节。
 
     // v0.8：不再调用任何 ObjC 方法（曾导致死机，见文件头安全声明）
     CBFLog(@"初始化完成（仅 C 函数层 hook）。日志路径 %@", g_logPath);
@@ -1434,8 +1549,8 @@ __attribute__((constructor)) static void CBFInit(void) {
         //   结果用户发日志过来时无法确认装的是哪一版，排查极痛苦。
         //   v0.9.0 就踩过这个坑（产物里搜不到 v0.9.0），本版起改为纯 ASCII 版本行，
         //   中文说明另起一行打。
-        CBFLog(@"==== CraneBadgeFix BUILD_TAG_092 (2026-10-19) ====");
-        CBFLog(@"版本 v0.9.2：作废「未读下降=已读」判据 + 清零标记保持期 + harvest 只登记一次");
+        CBFLog(@"==== CraneBadgeFix BUILD_TAG_093 (2026-10-19) ====");
+        CBFLog(@"版本 v0.9.3：修复启动清零误吞新消息 + DEFAULT 容器纳入判据 + 恢复新消息撤销清零标记 + 移除签名错误的 setExisting 探针");
         resolve_substrate();
         if (!pMSHookFunction) { CBFLog(@"substrate 不可用，退出"); return; }
 

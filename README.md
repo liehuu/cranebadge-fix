@@ -181,20 +181,31 @@ CraneSB 里角标有**两条独立的数据路径**：
 | `_badgeCountStoreGetContainerCount` | `0x6acc` | `0x6734` |
 | `_badgeCountStoreSetContainerCount` | `0x6f54` | `0x6b34` |
 | `_badgeCountStoreGetAppCount` | `0x6c4c` | `0x689c` |
-| `_setExistingBadgeCountForApplication` | `0x69f8` | `0x6590` |
+| ~~`_setExistingBadgeCountForApplication`~~ | ~~`0x69f8`~~ | ~~`0x6590`~~ |
 | `_privSetBadgeNumberHook` | `0x7c5c` | `0x7774` |
+
+> v0.9.3 起不再 hook `_setExistingBadgeCountForApplication`：v0.9.2 实机日志显示
+> 按 `(id appID, NSUInteger count)` 假设读出的参数是错的
+> （`app=__NSCFString`、`count=10761763936`），探针无信息量，整体移除。
+> 同帧日志证明 Crane 是用被 hook 的 getter 取值后再调它推送给 SpringBoard 的，
+> 压制 getter 即可让图标归零，无需改这个函数本身。
 
 hook 逻辑：
 
 1. `_privSetBadgeNumberHook` —— 捕获「角标被设为 0」信号（微信清角标入口）。
-   取值后先 `purge_containers()` 真正把该 app 所有已知容器计数经 orig 写 0
+   仅 **v == 0** 触发清零：`purge_containers()` 把该 app 所有已知容器计数经 orig 写 0
    （**这一步才让 BadgeStore.plist 真正干净**，是持久化的关键），
-   再打清零标记兜底未记录到的容器。
+   再打清零标记（带 3 秒保持期）兜底未记录到的容器。
+   v > 0 一律如实透传（v0.9.0/v0.9.1 的「未读下降=已读」判据已作废，见 main.m 文件头）。
 2. `_badgeCountStoreGetContainerCount` —— per-container 读取出口（快捷菜单 + GetAppCount 求和）。
-   已清零 app 或清零模式下返回 0。
-3. `_badgeCountStoreGetAppCount` —— app 级读取出口（图标角标），同样归零。
-4. `_badgeCountStoreSetContainerCount` —— 写入出口。`count > 0` 时撤销清零标记（新消息恢复显示）；
-   `count == 0` 时打清零标记并把 app 级也写 0。
+   zeroMode 期间只压制「plist 基线未变」的容器；is_cleared 期间压制已读 app。
+3. `_badgeCountStoreGetAppCount` —— app 级读取出口（图标角标）。
+   zeroMode 期间仅当「该 app 有已知容器且全部未超基线」时才整体压制
+   （v0.9.3 修正：无已知容器 = 无残留可清，此时绝不压制；DEFAULT 这类
+   未登记容器在启动后有数一律视为新消息，不压制）。
+4. `_badgeCountStoreSetContainerCount` —— 写入出口，只透传 + 记住容器。
+   v0.9.2 起不再在这里撤销清零标记（曾导致「已清零标记」与「撤销清零标记」
+   同毫秒成对出现，压制从未生效）。
 
 每个 hook 打完都会检查 `orig != NULL` 并打日志；若地址下钩失败（`orig` 仍为 NULL）
 自动退回 `dlsym`，两条路都失败会打印 `*** 目标函数无法定位 ***` 明确报警。
@@ -259,7 +270,7 @@ arm64e 分片（实际生效）：
 | 符号 | 地址 | 签名 |
 | --- | --- | --- |
 | `_existingBadgeCountForApplication` | 0x6910 | `(id appID) -> NSUInteger` |
-| `_setExistingBadgeCountForApplication` | 0x69f8 | `(id appID, NSUInteger count)` |
+| `_setExistingBadgeCountForApplication` | 0x69f8 | ~~`(id appID, NSUInteger count)`~~ ⚠️ 签名假设错误（实测读出 `app=__NSCFString`、`count=10761763936`），v0.9.3 已移除该 hook |
 | `_badgeCountStoreGetContainerCount` | 0x6acc | `(id appID, id containerID, BOOL) -> NSUInteger` |
 | `_badgeCountStoreGetAppCount` | 0x6c4c | `(id appID, BOOL) -> NSUInteger` |
 | `_badgeCountStoreUpdateBadge` | 0x6e94 | `(id appID, BOOL)` |
